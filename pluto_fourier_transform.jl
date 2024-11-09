@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.36
+# v0.19.46
 
 using Markdown
 using InteractiveUtils
@@ -61,6 +61,30 @@ begin
 	@syms x::real xi::real
 	integrate(exp(-2*PI*im*x*xi-PI*x^2),(x,-oo,oo)).simplify()
 end
+
+# ╔═╡ d85fdc4d-6c9c-49c8-89be-a0bcea30f158
+md"""
+#### The Poisson Summation Formula
+
+Let $f(x)$ be a rapidly decreasing function. Then so is $\hat{f}(\xi)$. Suppose that $\hat{f}(\xi)=0$ for $\lvert\xi\rvert \geqq B$ with some $B>0$. Then we have 
+
+$\sum_{n=-\infty}^\infty 
+f(x+n)
+=
+\sum_{n=-\infty}^\infty 
+\hat{f}(n) e^{2\pi i nx},
+\quad
+x\in\mathbb{R}.$
+
+In particular, if we substitute $x=0$ into the above formula, we have 
+
+
+$\sum_{n=-\infty}^\infty 
+f(n)
+=
+\sum_{n=-\infty}^\infty 
+\hat{f}(n).$
+"""
 
 # ╔═╡ d08f5ee2-c7c2-4a59-a9fb-7dc2d88518aa
 md"""
@@ -162,7 +186,7 @@ The latter one is said to be aliasing.
 
 # ╔═╡ 6c3a6a78-86fa-4bc2-9236-92dfbc0fc0e9
 md"""
-s = $(@bind s Slider(0.8:0.1:2, show_value=true))
+s = $(@bind s Slider(0.5:0.1:2, show_value=true))
 """
 
 # ╔═╡ 2d6010ab-b1c6-4a36-8c8a-d940b771f7f1
@@ -191,7 +215,7 @@ begin
 		 ylim=(-0.3,1.2),
          title="Example: Nyquist-Shannon sampling and aliasing",
          xticks = ([0 51 101 151 201;], [-10,-5,0,5,10]),
-		 xlabel="x",
+		 xlabel=L"x",
          yticks = ([0 0.5 1;], [0,0.5,1]),
          label=[L"F(x;s)" L"f(x)"],
 		 linecolor=["blue" "magenta"],
@@ -202,18 +226,20 @@ end
 # ╔═╡ f5cc5a49-1c0a-4428-a647-d8f96edd8e83
 md"""
 #### Japanese seismic scale
-Let $w_j(t)$ ($j=1,2,3$) be the mesurements at the time $t$ of seismic waves of the three directions respectively. 
-
-The Japanese seismic scale is obtained from the modified amplitude defined by 
+Let $w_j(t)$ ($j=1,2,3$) be the mesurements at the time $t$ of seismic waves of the three directions respectively. Roughly speaking, the Japanese seismic scale is extracted from the modified amplitude $A(t)$ defined by 
 
 $A(t)
 :=
-\left\lvert
+\left\{
 \sum_{j=1}^3
+\lvert{W_j(t)}\rvert^2
+\right\}^{1/2},$
+
+$W_j(t)
+=
 \int_{-\infty}^\infty
 K(t-s)w_j(s)
-ds
-\right\rvert,$
+ds,$
 
 where 
 
@@ -221,13 +247,39 @@ $K(t)
 :=
 \int_{-\infty}^\infty
 e^{2\pi{it\tau}}
-\frac{\lvert\tau\rvert^3}{(1+\tau^2)^{9/2}}
+\frac{\lvert\tau\rvert^{3/2}}{(1+\tau^2)^{6/2}}
 d\tau
 =
 2\int_0^\infty
 \cos(2\pi{t\tau})
-\frac{\lvert\tau\rvert^3}{(1+\tau^2)^{9/2}}
+\frac{\lvert\tau\rvert^{3/2}}{(1+\tau^2)^{6/2}}
 d\tau.$
+
+The kernel $K(t)$ is a simplified function of the kernel used for the seismic research in Japan, but $K(t)$ keeps the essential properties of the original kernel. In fact $K(t)$ satisfies $K(t) \in C^3(\mathbb{R})$ and 
+
+$\lvert{K^{(n)}(t)}\rvert
+\leqq
+\frac{C}{(1+\lvert{t}\rvert)^{1+\delta}},
+\quad
+\delta\in(0,1/2),
+\quad
+n=0,1,2,3.$
+
+If $\lvert{w_j(t)}\rvert\leqq C$, then $W_j(t) \in C^3(\mathbb{R})$ and 
+
+$\lvert{W_j^{(n)}(t)}\rvert
+\leqq
+C,
+\quad
+n=0,1,2,3.$
+
+Moreover if $A(t)>0$ for all $t \in \mathbb{R}$, then $A(t) \in C^3(\mathbb{R})$ and 
+
+$\lvert{A^{(n)}(t)}\rvert
+\leqq
+C,
+\quad
+n=0,1,2,3.$
 
 """
 
@@ -235,15 +287,18 @@ d\tau.$
 begin
     N5=100
 	KK5=zeros(N5+1,N5+1);
+	KK6=zeros(N5+1,N5+1);
 	h5=10/N5;
 
 	for j=1:N5+1
 		for k=1:N5+1
-			KK5[j,k]=2*cos(2*pi*(j-1)*(k-1)*h5^2)*((k-1)*h5)^3/(1+((k-1)*h5)^2)^(9/2);
+			KK5[j,k]=2*cos(2*pi*(j-1)*(k-1)*h5^2)*((k-1)*h5)^(3/2)/(1+((k-1)*h5)^2)^(6/2);
+			KK6[j,k]=2*cos(2*pi*(j-1)*(k-1)*h5^2)*((k-1)*h5)^(4/2)/(1+((k-1)*h5)^2)^(6/2);
 		end
 	end
 
 	K5=zeros(2*N5+1);
+	K6=zeros(2*N5+1);
 	for k=1:N5+1
 		K5[N5+1]=K5[N5+1]+KK5[1,k];
 	end
@@ -251,6 +306,8 @@ begin
 		for k=1:N5+1
 			K5[j]=K5[j]+KK5[N5+2-j,k];
 			K5[N5+1+j]=K5[N5+1+j]+KK5[j+1,k]
+			K6[j]=K6[j]+KK6[N5+2-j,k];
+			K6[N5+1+j]=K6[N5+1+j]+KK6[j+1,k]
 		end
 	end
 
@@ -263,11 +320,15 @@ begin
 		grid=:false,
 		xlim=(21,181),
 		xticks=([51 101 151;],[-5,0,5]),
+		xlabel=L"t",
 		label=L"K(t)",
 	    linewidth=2,
-	    xtickfont=font(12),
-	    ytickfont=font(12),
-	    legendfont=font(12))
+		titlefont=(12),
+		xguidefont=(12),
+	    xtickfont=font(11),
+	    ytickfont=font(11),
+	    legendfont=font(11))
+	    #plot!(K6,label="modified")
 	
      savefig("./pictures/seismicscaling.png")
 
@@ -319,7 +380,7 @@ Unitful = "~1.18.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.5"
 manifest_format = "2.0"
 project_hash = "379fe24961dc404d5e2a6fb6ae139a27ad81fb52"
 
@@ -536,7 +597,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.1+0"
 
 [[deps.ComputationalResources]]
 git-tree-sha1 = "52cb3ec90e8a8bea0e62e275ba577ad0f74821f7"
@@ -1349,7 +1410,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -2134,7 +2195,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2193,6 +2254,7 @@ version = "1.4.1+1"
 # ╟─1bd03510-d1d2-11ec-04c2-fbbd23b59e29
 # ╟─dcb9b0ed-8338-4eb0-839f-cf7611c8f3b3
 # ╟─30d870a3-1b06-4a89-8772-f3fdc6bc2bd9
+# ╟─d85fdc4d-6c9c-49c8-89be-a0bcea30f158
 # ╟─d08f5ee2-c7c2-4a59-a9fb-7dc2d88518aa
 # ╟─8ac97a72-05de-483e-b21c-dbd533632d99
 # ╟─b5f40261-b208-4786-9a5f-0756784b3099

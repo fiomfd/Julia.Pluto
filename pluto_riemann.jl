@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.36
+# v0.19.46
 
 using Markdown
 using InteractiveUtils
@@ -100,7 +100,7 @@ n= $(@bind n Slider(1:300, show_value=true))
 # ╔═╡ 24d518cb-7088-4efb-a87b-6882fb17c5f9
 begin
 	x1 = range(0, 1, length = 501);
-	f1=sin.(2*pi*x1)+x1+1.2*ones(501);
+	f1=sin.(2*pi*x1)+x1+1.3*ones(501);
 	
 	g1=zeros(501);
 	for j=1:501
@@ -120,8 +120,8 @@ begin
 		edgecolor=:false, 
 	    legend=false,
 	    lw=3,
-	    color=:blue)
-	bar!(g1,lw=0,color=:skyblue)
+	    color=:magenta)
+	bar!(g1,lw=0,color=:blue)
 end
 
 # ╔═╡ c7e78791-8e99-4615-8f10-13fab72d03e1
@@ -235,7 +235,7 @@ Symbolics = "~5.5.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.5"
 manifest_format = "2.0"
 project_hash = "ec2f399b1104492b8ec3ee51a2f5ffdc66d6e150"
 
@@ -400,7 +400,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.1+0"
 
 [[deps.CompositeTypes]]
 git-tree-sha1 = "02d2316b7ffceff992f3096ae48c7829a8aa0638"
@@ -1015,7 +1015,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1700,7 +1700,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1757,7 +1757,7 @@ version = "1.4.1+0"
 # ╟─f13630b1-420d-40d4-b24f-c100d29fb30e
 # ╟─174c82bf-34bd-47e7-bb52-93307f29b47c
 # ╟─7b34916d-8ab9-4157-a5fd-9f45fb2915ef
-# ╠═24d518cb-7088-4efb-a87b-6882fb17c5f9
+# ╟─24d518cb-7088-4efb-a87b-6882fb17c5f9
 # ╟─c7e78791-8e99-4615-8f10-13fab72d03e1
 # ╟─7c32e837-aaf4-402c-b4b2-1985441b23ea
 # ╟─0dec1d8a-79a1-4e1d-9df6-b5d39a10f9cd

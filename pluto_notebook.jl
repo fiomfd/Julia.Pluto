@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.46
+# v0.19.42
 
 using Markdown
 using InteractiveUtils
@@ -14,202 +14,1329 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 5ffc5ec0-f91f-11ec-0552-37ef5f25102d
+# ╔═╡ bf5554d5-5c14-48bb-8dda-bf264cf660a9
 begin
-    using PlutoUI
+	using PlutoUI
+    using LaTeXStrings
+	using Formatting
 	using Plots
-    using Symbolics
-    using ForwardDiff
-	using LaTeXStrings
+	using Colors 
+	using ImageFiltering
 	using Images
+	using ImageMagick
 	using TestImages
 	using ImageView
+	using ImageTransformations
 	using LinearAlgebra
-#	using FFTW
-#	using DSP
-	nbsp = html"&nbsp"
+	using LowRankApprox
+	using Wavelets
+	using DSP
+	using Primes
+    using DataFrames
 end
 
-# ╔═╡ ab1c3d69-0499-4fad-b2a8-5360ed7339e1
+# ╔═╡ 4fc5029e-1e90-408d-b5c6-c563918ae660
+md""" #### 数ベクトル空間の線形代数
+1. 行列と数ベクトル
+
+2. 行列が表すデータ
+
+3. 行列の特異値分解と低階最良近似
+
+４. 離散ウェーブレット分解と画像処理
+"""
+
+# ╔═╡ e8b6f53b-eb6a-4f9b-99e5-8ee87f2ceda2
+md"""
+#### 1. 行列と数ベクトル 
+"""
+
+# ╔═╡ 9aa96b35-d37d-46c2-90c9-509d06126fd5
+md"""
+##### 1-1. 行列と数ベクトルの定義
+
+さて$m$と$n$を正整数とし$m{\times}n$個の(実)数 
+
+$a_{ij}, \quad i=1,\dotsc,m, \quad j=1,\dotsc,n$ 
+
+を行を $m$ 個で列が $n$ 個になるように並べて $[\quad]$ または $(\quad)$ で括ったもの
+
+$A=[a_{ij}]
+:=
+\begin{bmatrix}
+a_{11} & a_{12} & \dotsb & a_{1n}
+\\
+a_{21} & a_{22} & \dotsb & a_{2n}
+\\
+\vdots & \vdots &  & \vdots
+\\
+a_{m1} & a_{m2} & \dotsb & a_{mn}
+\end{bmatrix}$
+
+を $m{\times}n$ 行列という. 例えば
+
+$\begin{bmatrix}
+1 & 2 & 3
+\\
+4 & 5 & 6
+\end{bmatrix},
+\quad
+\begin{bmatrix}
+1 & 2 & 3
+\\
+4 & 5 & 6
+\\
+7 & 8 & 9
+\end{bmatrix},
+\quad
+\begin{bmatrix}
+1
+\\
+4
+\\
+7
+\end{bmatrix},
+\quad
+\begin{bmatrix}
+1 & 2 & 3
+\end{bmatrix}$
+
+は行列である. 特に列または行の数が1である場合
+
+$\vec{a}
+=
+\begin{bmatrix}
+a_1 \\ \vdots \\ a_m
+\end{bmatrix},
+\quad
+\vec{b}
+=
+\begin{bmatrix}
+b_1 & \dotsb & b_n
+\end{bmatrix}$
+
+はそれぞれ $m$ 次元列ベクトル, $n$ 次元行ベクトルとよぶ. 
+"""
+
+# ╔═╡ b4bcd9fb-1960-445d-bde1-5755fd5662e8
+md"""
+##### 1-2. 行列と数ベクトルの演算
+
+- 行列 $A$ の転置行列 $A^T$: $m{\times}n$ 行列 $A=[a_{ij}]$ の転置行列 $A^T$ という $n{\times}m$ 行列を次のように定義する:
+$A^T:=[a_{ji}], 
+\quad 
+\begin{bmatrix}
+1 & 2 & 3
+\\
+4 & 5 & 6
+\end{bmatrix}^T
+=
+\begin{bmatrix}
+1 & 4
+\\
+2 & 5
+\\
+3 & 6
+\end{bmatrix}.$
+
+- 行列の和 $A+B$: $A=[a_{ij}]$ と $B=[b_{ij}]$ が同じ $m{\times}n$ 行列であるとき $A+B$ を次のように定義する:
+$A+B:=[a_{ij}+b_{ij}],$
+$\begin{bmatrix}
+1 & 2 & 3
+\\
+4 & 5 & 6
+\end{bmatrix}
++
+\begin{bmatrix}
+7 & 8 & 9
+\\
+10 & 11 & 12
+\end{bmatrix}
+=
+\begin{bmatrix}
+1+7 & 2+8 & 3+9
+\\
+4+10 & 5+11 & 6+12
+\end{bmatrix}
+=
+\begin{bmatrix}
+8 & 10 & 12
+\\
+14 & 16 & 18
+\end{bmatrix}.$
+
+- 行列のスカラー倍 $cA$: 数 $c$ と $A=[a_{ij}]$ に対して $A$ のスカラー倍 $cA$ を次のように定義する:
+$cA:=[ca_{ij}],
+\quad
+5
+\begin{bmatrix}
+1 & 2 & 3
+\\
+4 & 5 & 6
+\end{bmatrix}
+=
+\begin{bmatrix}
+5 & 10 & 15
+\\
+20 & 25 & 30
+\end{bmatrix}.$
+
+- 行列と列ベクトルの積 $A\vec{x}$: $\vec{a}_1,\dotsc,\vec{a}_n$ を $m$ 次元列ベクトルとし, $m{\times}n$ 行列 $A$ を $A:=\begin{bmatrix}\vec{a}_1 & \dotsb & \vec{a}_n\end{bmatrix}$ とする. $n$ 次元列ベクトル $\vec{x}=\begin{bmatrix}x_1 \\ \vdots \\ x_n\end{bmatrix}$ に対して $m$ 次元列ベクトル $A\vec{x}$ を次のように定義する:
+$A\vec{x}:=x_1\vec{a}_1+\dotsb+x_n\vec{a}_n,$
+$\begin{bmatrix}
+1 & 2
+\\
+3 & 4
+\\
+5 & 6
+\end{bmatrix}
+\begin{bmatrix}
+100 \\ 10
+\end{bmatrix}
+=
+100
+\begin{bmatrix}
+1
+\\
+3
+\\
+5
+\end{bmatrix}
++
+10
+\begin{bmatrix}
+2
+\\
+4
+\\
+6
+\end{bmatrix}
+=
+\begin{bmatrix}
+120
+\\
+340
+\\
+560
+\end{bmatrix}.$
+
+- 行列の積 $AB$: $m{\times}n$ 行列 $A$ と $n{\times}l$ 行列 $B:=\begin{bmatrix}\vec{b}_1 & \dotsb & \vec{b}_l\end{bmatrix}$ に対して $m{\times}l$ 行列 $AB$ を次のように定義する:
+$AB:=\begin{bmatrix}A\vec{b}_1 & \dotsb & A\vec{b}_l\end{bmatrix},$
+$\begin{bmatrix}
+1 & 2
+\\
+3 & 4
+\\
+5 & 6
+\end{bmatrix}
+\begin{bmatrix}
+10 & 10
+\\ 
+1 & 100
+\end{bmatrix}
+=
+\begin{bmatrix}
+12 & 210
+\\
+34 & 430
+\\
+56 & 650
+\end{bmatrix}.$
+
+
+"""
+
+# ╔═╡ 642ba2ee-ba66-4601-9edb-677c23e70780
+md"""
+##### 1-3. 平面上の線形写像の例
+さて $A$ を $m{\times}n$ 行列, $\vec{x}$ と $\vec{y}$ を $n$ 次元列ベクトル, $c$ と $d$ を数とする. 
+次の対応 
+
+$\vec{x} \mapsto A\vec{x}$
+
+は $n$ 次元列ベクトルの全体 $\mathbb{R}^n$ から $m$ 次元列ベクトルの全体 $\mathbb{R}^m$ への写像であり, 列ベクトルの和とスカラー倍を保存する: 
+
+$A(c\vec{x}+d\vec{y}) = c(A\vec{x}) + d(A\vec{y}).$
+
+このような性質をもつ写像は線形写像とよばれる. 以下では $2\times2$ 行列が定義する平面 $\mathbb{R}^2$ から平面 $\mathbb{R}^2$ への線形写像の例を2つ見てみよう.
+
+$\vec{x} \mapsto \vec{s}:=A\vec{x},$
+
+すなわち
+
+$\begin{bmatrix} x \\ y \end{bmatrix}
+\mapsto 
+\begin{bmatrix} s \\ t \end{bmatrix}
+:=
+\begin{bmatrix} a & b \\ c & d \end{bmatrix}
+\begin{bmatrix} x \\ y \end{bmatrix}
+=
+x
+\begin{bmatrix} a \\ c \end{bmatrix}
++
+y
+\begin{bmatrix} b \\ d \end{bmatrix}$
+
+とする.
+"""
+
+# ╔═╡ b8264135-0b84-4395-8d3a-ad8f42265004
+md"""
+###### 1-3-1. 伸長
+２つの定数 $\lambda\ne0$ かつ $\mu\ne0$ を導入する. 
+
+$\begin{bmatrix} s \\ t \end{bmatrix}
+:=
+\begin{bmatrix} \lambda & 0 \\ 0 & \mu \end{bmatrix}
+\begin{bmatrix} x \\ y \end{bmatrix}
+=
+\begin{bmatrix} \lambda{x} \\ \mu{y} \end{bmatrix}$
+
+は $x$ 軸の尺度を $\lambda$ 倍に引き伸ばし, $y$ 軸の尺度を $\mu$ 倍に引き伸ばす写像である. 
+$\lambda<0$ ならば $x$ 軸と $u$ 軸の向きは逆になる. 
+
+原点を中心とする単位円の方程式 $x^2+y^2=1$ は楕円の方程式
+
+$\frac{s^2}{\lambda^2}+\frac{t^2}{\mu^2}=1$
+
+に移る. $\lambda=\sqrt{2}$, $\mu=1/\sqrt{2}$ の場合の図は以下のようになる.
+
+"""
+
+# ╔═╡ beeb450c-2191-4591-a289-d0d956e83e98
 begin 
-	include("xray.jl")
-	segment(A, B; color="black", kwargs...) = plot([A[1], B[1]], [A[2], B[2]]; color=color, kwargs...)
-    segment!(A, B; color="black", kwargs...) = plot!([A[1], B[1]], [A[2], B[2]]; color=color, kwargs...)
-    segment!(p, A, B; color="black", kwargs...) = plot!(p, [A[1], B[1]], [A[2], B[2]]; color=color, kwargs...)
+	ellipse=load("./image/ellipse.png");
+end
 
-	I=load("./material/stomach.png");
-	z=Gray.(I);
-	
-	w,h = size(z);
-	Nr_div2 = floor(sqrt(w*w+h*h)/2);
-	Nr = Int64(Nr_div2*2+1);
-	angles = (0:1:179)/180*pi; # [rad]
-	sinogram = radon(z,angles);
+# ╔═╡ df792cbc-3244-453d-9cb8-6bc359b881c5
+md"""
+###### 1-3-2. 回転
+原点を中心に半時計回りに角度 $\theta \in [0,2\pi)$ の回転を与える行列 $P(\theta)$ は
 
+$P(\theta)
+=
+\begin{bmatrix}
+\cos\theta & -\sin\theta
+\\
+\sin\theta & \cos\theta
+\end{bmatrix}$
+
+である. 第1列と第2列の関係は以下のようになり, 直交していることがわかる:
+
+$\begin{bmatrix}
+-\sin\theta
+\\
+\cos\theta
+\end{bmatrix}
+=
+\begin{bmatrix}
+\cos(\theta+\pi/2)
+\\
+\sin(\theta+\pi/2)
+\end{bmatrix}.$
+
+角度が $\theta=\pi/6$ のときに $uv$-平面に $x$-軸と $y$-軸を書き込んでみる:
+
+$\begin{bmatrix} s \\ t \end{bmatrix}
+=
+\begin{bmatrix}
+\cos(\pi/6) & -\sin(\pi/6)
+\\
+\sin(\pi/6) & \cos(\pi/6)
+\end{bmatrix}
+\begin{bmatrix} x \\ y \end{bmatrix}
+=
+x
+\begin{bmatrix} \sqrt{3}/2 \\ 1/2 \end{bmatrix}
++
+y
+\begin{bmatrix} -1/2 \\ \sqrt{3}/2 \end{bmatrix}.$
+
+"""
+
+# ╔═╡ 8e88d7de-5b94-46dc-bb37-b2a89287372e
+begin 
+	rotation=load("./image/rotation.png");
+end
+
+# ╔═╡ 734f2151-1622-466c-8f64-0b86d81b32f2
+
+
+# ╔═╡ 2cc48257-83e1-4fa4-8659-edc962d92bf2
+begin
+	xx=rand(1550:1950, 100)/10;
+    XX=[ones(100) xx];
+    yy=(xx.^2).*rand(160:400, 100)/100000;
+	yy=round.(yy, digits=1);
+    bb=XX\yy;
+    tt=155:1:195;
+    zz=[ones(length(tt)) tt]*bb;
+	ZZ=[xx yy];
 	for i=1:1
 	end
 end
 
-# ╔═╡ 2dc43448-3cf4-475f-8b61-d16c3594d9e3
+# ╔═╡ 9ff98a24-2646-4009-9482-9d066faa1716
+md"""
+#### 2. 行列が表すデータ
+"""
+
+# ╔═╡ 56cc741b-f300-4558-a078-a161f58307a9
+md"""
+##### 2-1. データ行列
+下記は100人の身長と体重のデータ一覧であるが, $100\times2$ の行列とみなすことができる. 一般に個体数 $N$ で各個体がそれぞれ $p$ 種類のデータをもっているとき, そのデータ一覧は $N{\times}p$ 行列として表すことができる. 
+"""
+
+# ╔═╡ dc3cb19c-c076-4dc4-9d38-90a5c4956f3b
+begin
+	df = DataFrame(height = xx, weight = yy)
+end
+
+# ╔═╡ c8263139-b11e-4404-a311-e5a345944168
+md"""
+身長を横軸に体重を縦軸にとった平面上に各個人のデータを点で表すことができる. これを散布図という. 線形代数の一般逆行列あるいは特異値分解を利用すると, 線形回帰(最小二乗法)による身長と体重の関係を表す直線を求めることができる.
+"""
+
+# ╔═╡ e5700f04-1645-4fa7-9fa9-b2cc608120b7
+begin
+	scatter(xx,yy, 
+		grid=false,
+		label="sample", 
+		xlabel="height [cm]", 
+		ylabel="weight [kg]", 
+        title="Linear Regression between Height & Weight")
+    plot!(tt,zz,linewidth=2, label="regression",color="magenta")
+end
+
+# ╔═╡ d412da3b-992f-450f-8c4f-989f033697e8
+md"""
+##### 2-2. 白黒画像 (grayscale image)
+さて, 白黒画像 (grayscale image) は各小正方形(ピクセル)に $0$ から $255$ までの整数, あるいは, 
+それらを $255$ で割った $0$ から $1$ までの実数を割り当てたものであり, そのような成分をもつ行列であるとみなすことができる. $0$ は黒を表し $255$ は白を表す. 数値は色の強さを表し大きいほど強い. 例えば次の行列
+
+$\begin{bmatrix}
+0 & 15  & 30  & 45 & 60 & 75
+\\ 
+90 & 105 & 120  & 135  & 150 & 165
+\\ 
+180 & 195  & 210  & 225 & 240 & 255
+\end{bmatrix}$
+
+の表す白黒画像は以下のとおりである。
+"""
+
+# ╔═╡ 9ff00640-ee11-4d18-9fbd-3d6ef5264ee5
+begin
+    Gsample=[0 15 30 45 60 75; 
+		     90 105 120 135 150 165;
+		     180 195 210 225 240 255]/255;
+	plot(Gray.(Gsample),
+		xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false)
+end
+
+# ╔═╡ aa109280-a4ef-427a-8b75-850acd667d12
+md"""
+##### 2-3. RGB画像
+
+RGB画像は同じサイズの白黒画像のデータの3つの行列をデータとし, 各行列を三原色の赤と緑と青でそれぞれ着色して合わせたものである. プログラミング言語の乱数機能で生成した3つの$16\times16$行列とその3つ組が表すRGB画像を示す.
+
+"""
+
+# ╔═╡ 34c4dc39-0b65-4abd-9997-c8bfaf02b529
+begin
+# read image, resize, decompose
+	L1=4;
+	RII=rand(2^L1, 2^L1);
+	GII=rand(2^L1, 2^L1);
+	BII=rand(2^L1, 2^L1);
+	RRR=zeros(3,2^L1, 2^L1);
+	GGG=zeros(3,2^L1, 2^L1);
+	BBB=zeros(3,2^L1, 2^L1);
+	RGBII=zeros(3,2^L1, 2^L1);
+	RRR[1,:,:]=RII[:,:];
+	GGG[2,:,:]=GII[:,:];
+	BBB[3,:,:]=BII[:,:];
+	RGBII[1,:,:]=RII[:,:];
+	RGBII[2,:,:]=GII[:,:];
+	RGBII[3,:,:]=BII[:,:];
+
+QQQ1=plot(colorview(RGB,RRR),
+        title="Grayscale Image (Red)",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+QQQ2=plot(colorview(RGB,GGG),
+        title="Grayscale Image (Green)",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+QQQ3=plot(colorview(RGB,BBB),
+        title="Grayscale Image (Blue)",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+QQQ4=plot(colorview(RGB,RGBII),
+        title="RGB Image",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+plot(QQQ1,QQQ2,QQQ3,QQQ4,size=(1000,1000),layout=(2,2))
+end
+
+# ╔═╡ 23591d92-e9d9-4565-94d0-6d3b37c8befc
+md"""
+#### 3. 行列の特異値分解と低階最良近似
+"""
+
+# ╔═╡ a7744957-4472-4012-ad31-372cd48fa78c
+md""" ##### 3-1. 特異値分解の例
+
+行列 
+
+$A
+=
+\frac{1}{8}
+\begin{bmatrix} 
+\sqrt{6}+4\sqrt{2} & \sqrt{6}-4\sqrt{2} 
+\\ 
+-4\sqrt{6}+\sqrt{2} & 4\sqrt{6}+\sqrt{2} 
+\end{bmatrix}$ 
+
+は次のように分解される:
+
+$A
+=
+U \Sigma V^T
+=
+\begin{bmatrix} \cos(\pi/3) & \sin(\pi/3) \\ -\sin(\pi/3) & \cos(\pi/3) \end{bmatrix}
+\begin{bmatrix} 2 & 0 \\ 0 & 1/2 \end{bmatrix}
+\begin{bmatrix} \cos(\pi/4) & \sin(\pi/4) \\ -\sin(\pi/4) & \cos(\pi/4) \end{bmatrix}^T.$
+
+さて $U$ は時計回りの $\pi/3$ の回転を与える行列であり, $V^T$ は反時計回りの $\pi/4$ の回転を与える行列であり, $A$ は回転 ($V^T$), 伸長 ($\Sigma$), 回転 ($U$) の合成写像であることがわかる. 
+
+$\begin{bmatrix} s \\ t \end{bmatrix}
+=
+\frac{x}{8}
+\begin{bmatrix} \sqrt{6}+4\sqrt{2} \\ -4\sqrt{6}+\sqrt{2} \end{bmatrix}
++
+\frac{y}{8}
+\begin{bmatrix} \sqrt{6}-4\sqrt{2} \\ 4\sqrt{6}+\sqrt{2}  \end{bmatrix}$
+
+とすると, 単位円の方程式 $x^2+y^2=1$ は傾いた楕円の方程式 $49s^2+15\sqrt{3}st+19t^2=16$ に移る.  
+"""
+
+# ╔═╡ 8d8b6675-a71f-421b-bc62-c0a6fb9b3e9e
+begin 
+	svdexample=load("./image/svd.png");
+end
+
+# ╔═╡ 2e5e3122-1b2b-4dcf-88d4-f79b3e727bbf
+md"""
+$\sigma_1=2,
+\quad
+\sigma_2=\frac{1}{2},$
+
+$\vec{v}_1
+=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+1 \\ -1 
+\end{bmatrix},
+\quad
+\vec{v}_2
+=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+1 \\ 1 
+\end{bmatrix},$
+
+$\vec{u}_1
+=
+\frac{1}{2}
+\begin{bmatrix}
+1 \\ -\sqrt{3} 
+\end{bmatrix},
+\quad
+\vec{u}_2
+=
+\frac{1}{2}
+\begin{bmatrix}
+\sqrt{3} \\ 1 
+\end{bmatrix}$
+
+とおくと, 
+
+
+$A
+=
+\sum_{j=1}^2\sigma_j\vec{u}_j\vec{v}_j^T
+=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+1 \\ -\sqrt{3} 
+\end{bmatrix}
+\begin{bmatrix}
+1 & -1 
+\end{bmatrix}
++
+\frac{1}{4\sqrt{2}}
+\begin{bmatrix}
+\sqrt{3} \\ 1 
+\end{bmatrix}
+\begin{bmatrix}
+1 & 1 
+\end{bmatrix},$
+
+すなわち
+
+$A
+=
+\frac{1}{8}
+\begin{bmatrix} 
+\sqrt{6}+4\sqrt{2} & \sqrt{6}-4\sqrt{2} 
+\\ 
+-4\sqrt{6}+\sqrt{2} & 4\sqrt{6}+\sqrt{2} 
+\end{bmatrix}
+=
+\frac{1}{8}
+\begin{bmatrix} 4\sqrt{2} & -4\sqrt{2} \\ -4\sqrt{6} & 4\sqrt{6} \end{bmatrix}
++
+\frac{1}{8}
+\begin{bmatrix} \sqrt{6} & \sqrt{6} \\ \sqrt{2} & \sqrt{2} \end{bmatrix}$
+
+と表すことができる. 
+"""
+
+# ╔═╡ b4937ad5-c8c7-492c-86d6-981a14f274ca
+
+
+# ╔═╡ 3f45852f-ad72-4ba2-b147-a14151e8ed97
+md""" ##### 3-2. 一般の行列の特異値分解と低階最良近似
+一般の $m{\times}n$ 行列 $A=\begin{bmatrix}\vec{a}_1 & \dotsb & \vec{a}_n \end{bmatrix}$ に対して $A$ の階数 (rank) とよばれる非負整数
+
+$r
+:=
+\operatorname{dim}\bigl(
+\{
+A\vec{x}
+=
+x_1\vec{a}_1+\dotsb+x_n\vec{a}_n 
+\ \vert \ 
+\vec{x} \in \mathbb{R}^n
+\}
+\bigr)$ 
+
+が定義される. $A$ の成分がすべて $0$ の場合を除くと $1 \leqq r \leqq \min\{m,n\}$ が成立する. 
+"""
+
+# ╔═╡ 52b8e90f-41d2-4791-9042-799053d5ec38
+begin 
+	strang=load("./image/strang.jpeg");
+end
+
+# ╔═╡ 3d656643-bf04-4ac7-99fc-6d98a571523a
 md""" 
-## X-ray transform on $\mathbb{R}^2$
+このとき 
 
-A planar line $\gamma$ is parametrized by $(\theta,t)\in[0,\pi]\times\mathbb{R}$ as 
+$\sigma_1 \geqq \dotsb \geqq \sigma_r>0,
+\quad
+\vec{u}_1,\dotsc,\vec{u}_r \in \mathbb{R}^m,
+\quad
+\vec{v}_1,\dotsc,\vec{v}_r \in \mathbb{R}^n$
 
-$
-\begin{aligned}
-  \gamma
-  =
-  \gamma(\theta,t)
-& =
-  \{(x,y)\in\mathbb{R}^2\ : \ x\cos\theta+y\sin\theta=t\}
-\\
-& =
-  \{(x,y)\in\mathbb{R}^2\ : \ \cos\theta(x-t\cos\theta)+\sin\theta(y-t\sin\theta)=0\}
-\\
-& =
-  \{\vec{x}\in\mathbb{R}^2\ : \ \vec{\omega}\cdot(\vec{x}-t\vec{\omega})=0\}
-\\
-& =
-  \{(t\cos\theta-s\sin\theta,t\sin\theta+s\cos\theta)\ : \ s\in\mathbb{R}\},
-\\
-  \vec{\omega}
-& =
-  (\cos\theta,\sin\theta)\in\mathbb{S}^1.
-\end{aligned}$
+が存在して
 
-The X-ray transform of a function $f$ of $(x,y)\in\mathbb{R}^2$ is defined by 
+$A=\sum_{j=1}^r\sigma_j\vec{u}_j\vec{v}_j^T$
 
-$\mathcal{R}_1f(\gamma)=\mathcal{R}_1f(\theta,t)
-:=\int_\gamma f=\int_{-\infty}^\infty f(t\cos\theta-s\sin\theta,t\sin\theta+s\cos\theta)ds.$
+と表すことができることが知られている. 
 
-We have $\mathcal{R}_1f(\theta+\pi,-t)=\mathcal{R}_1f(\theta,t)$ for $(\theta,t)\in[0,\pi]\times\mathbb{R}$.
+$A_k:=\sum_{j=1}^k\sigma_j\vec{u}_j\vec{v}_j^T, \quad k=1,\dotsc,r$
+
+とすると, $A_k$ の階数は $k$ であり, 階数が $k$ のすべての行列のうち $A$ に最も近い行列, すなわち, 階数が $k$ のすべての行列の中で $A_k$ は $A$ の最良の近似を与える行列であることが知られている. シンガポール国立大学の理学部食堂の焼きそばの画像 $384\times512\times3$ を低階最良近似してみる. 
 """
 
-# ╔═╡ a2a26295-531b-424d-9fd7-b3974987623b
+# ╔═╡ 789e78db-4f6a-4f7a-bba0-8ab119d3f1fb
 begin
-    plot([1,101],[-50/sqrt(3)-12.5,50/sqrt(3)-12.5],label="\$t\$",
-		arrow=3,linewidth=2,linecolor=:lightgreen,
-		title="Parametrization of the X-ray transform on the plane",
-		xlim=(0,102),
-		ylim=(-51,51),
-		xlabel="\$x\$",
-		ylabel="\$y\$",
-	    xticks=([21],[0]),
-	    yticks=([-30],[0]),
-	    aspect_ratio=1.0,
-		size=(600,600),
-	    annotations = [(35,-26, "\$θ\$", 15)])
-	plot!([79,25],[-sqrt(3)*29,sqrt(3)*25],label="\$s\$",
-		arrow=3,linewidth=2,linecolor=:magenta)
-	plot!([1,101],[-30,-30],label=false,
-		  arrow=3,linewidth=1,linecolor=:black)
-	plot!([21,21],[-50,50],label=false,
-		  arrow=3,linewidth=1,linecolor=:black)
-	scatter!((56,-10),markersize = 5,label=false, color=:blue)
+# read image, resize, decompose
+	I=load("./material/char_kway_teow.jpg");
+    X=imresize(I, ratio=1/4);
+    (p,q)=size(X);
+	L=7;
+    A=channelview(X);
+    R=Array{Float64}(A[1,:,:]);
+	G=Array{Float64}(A[2,:,:]);
+	B=Array{Float64}(A[3,:,:]);
+
+
+	RU, RS, RV=psvd(R);
+	GU, GS, GV=psvd(G);
+	BU, BS, BV=psvd(B);
+	
+	rank=100;
+	DR=zeros(p,q,rank);
+	DG=zeros(p,q,rank);
+	DB=zeros(p,q,rank);
+    for r=1:rank
+	    DR[:,:,r]=sum(RS[n]*RU[1:p,n]*(RV[1:q,n])' for n=1:r);
+        DG[:,:,r]=sum(GS[n]*GU[1:p,n]*(GV[1:q,n])' for n=1:r);
+        DB[:,:,r]=sum(BS[n]*BU[1:p,n]*(BV[1:q,n])' for n=1:r);
+	end
 end
 
-# ╔═╡ 76cb2ec2-fc76-4ad5-8d57-777395755f7f
-md"""
-#### Example of X-ray transform on $\mathbb{R}^2$
-"""
-
-# ╔═╡ 092ba07e-4866-40c6-ade8-25d9c2218011
-md"""
-θ = $(@bind a1 Slider(0:1:179, show_value=true, default=0)) 
-$nbsp $nbsp $nbsp
-t = $(@bind b1 Slider(-500:1:500, show_value=true, default=0))
-"""
-
-# ╔═╡ 8ed1312b-f5a3-4220-a865-9a12ed09a691
+# ╔═╡ 6e01a823-9696-41b7-96a3-cc1157bd472d
 begin
-	if a1==90
-		P=(456,1);
-		Q=(456,657);
-		R=(1,328-b1);
-		S=(914,328-b1);
-	else
-		P=(1,328+456*tan(pi*a1/180));
-		Q=(914,328-456*tan(pi*a1/180));
-		R=(457+b1/cos(pi*a1/180)-328*tan(pi*a1/180),1);
-		S=(457+b1/cos(pi*a1/180)+328*tan(pi*a1/180),657);
+    Y=zeros(3,p,q,rank+16);
+	Z=zeros(p,q)
+	for r=1:4
+	    Y[1,:,:,r]=R;
+        Y[2,:,:,r]=G;
+        Y[3,:,:,r]=B;
+	end
+    for r=5:8
+	    Y[1,:,:,r]=Z;
+        Y[2,:,:,r]=Z;
+        Y[3,:,:,r]=Z;
+    end
+	for r=9:rank+8
+        Y[1,:,:,r]=DR[:,:,r-8];
+        Y[2,:,:,r]=DG[:,:,r-8];
+        Y[3,:,:,r]=DB[:,:,r-8];
+	end
+    for r=rank+9:rank+12
+        Y[1,:,:,r]=Z;
+        Y[2,:,:,r]=Z;
+        Y[3,:,:,r]=Z;
+	end
+    for r=rank+13:rank+16
+        Y[1,:,:,r]=R;
+        Y[2,:,:,r]=G;
+        Y[3,:,:,r]=B;
+	end
+end
+
+# ╔═╡ 6f41a7c7-6c0a-447f-a9ff-6ef79d8c21b0
+begin
+    W=zeros(3,p,q,rank);
+    for r=1:rank
+	    W[1,:,:,r]=DR[:,:,r];
+        W[2,:,:,r]=DG[:,:,r];
+        W[3,:,:,r]=DB[:,:,r];
+	end
+end
+
+# ╔═╡ bf7a523b-3783-4e45-a201-cbffaaf4859a
+md"""
+rank = $(@bind r Slider(1:rank, show_value=true))
+"""
+
+# ╔═╡ 780baf1a-b008-44dc-be56-75d0b5cf621e
+begin
+SVD1=plot(colorview(RGB,W[:,:,:,r]),
+        title="approximation 1-100/384",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+SVD2=plot(colorview(RGB,X),
+        title="original RGB image",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+plot(SVD1,SVD2)
+end
+
+# ╔═╡ 17c01101-a17c-43f6-9a08-260f13e17c13
+
+
+# ╔═╡ c53a862a-0a1d-479e-a84e-f32d7bd7cfc8
+md"""
+#### ４. 離散ウェーブレット分解と応用
+"""
+
+# ╔═╡ 6b1ce739-aca6-47d6-842a-701712b2cc61
+md"""
+##### 4-1. 離散ハール・ウェーブレット
+離散ウェーブレットとはある性質をみたす2つの数ベクトルの組でのことである. 
+最も単純なのは次の離散ハール・ウェーブレットである. 
+
+$\vec{u}
+=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+1
+\\
+1
+\\
+0
+\\
+\vdots
+\\
+0 
+\end{bmatrix}, 
+\quad
+\vec{v}
+=
+\frac{1}{\sqrt{2}}
+\begin{bmatrix}
+1
+\\
+-1
+\\
+0
+\\
+\vdots
+\\
+0 
+\end{bmatrix}
+\in\mathbb{R}^{N},$
+
+これを用いると数ベクトルや行列の隣接する成分の平均をとるという操作を線形代数だけを用いて系統的に定義することができる. 2回の操作で
+
+$\vec{a}_0
+=
+\begin{bmatrix}
+1 \\ 3 \\ 5 \\ 7 
+\end{bmatrix}
+\mapsto 
+\vec{a}_1
+=
+\begin{bmatrix}
+2 \\ 2 \\ 6 \\ 6 
+\end{bmatrix}
+\mapsto 
+\vec{a}_2
+=
+\begin{bmatrix}
+4 \\ 4 \\ 4 \\ 4 
+\end{bmatrix}$
+
+$A_0
+=
+\begin{bmatrix}
+0 & 2 & 4 & 6
+\\ 
+8 & 10 & 12 & 14 
+\\ 
+16 & 18 & 20 & 22
+\\ 
+24 & 26 & 28 & 30
+\end{bmatrix}
+\mapsto 
+A_1
+=
+\begin{bmatrix}
+5 & 5 & 9 & 9
+\\ 
+5 & 5 & 9 & 9 
+\\ 
+21 & 21 & 25 & 25
+\\ 
+21 & 21 & 25 & 25
+\end{bmatrix}
+\mapsto 
+A_2
+=
+\begin{bmatrix}
+15 & 15 & 15 & 15
+\\ 
+15 & 15 & 15 & 15 
+\\ 
+15 & 15 & 15 & 15
+\\ 
+15 & 15 & 15 & 15
+\end{bmatrix}$
+
+のようになる. 平均をとる操作を $\ell$ 回行って得られるものをレベル $\ell$ の近似部分, 残りをレベル $\ell$ の詳細部分という. 画像データのウェーブレット分解を観察してみよう.
+
+""" 
+
+# ╔═╡ de96f98e-7217-496f-9bf0-6c3e13706ec0
+begin
+	L0=3
+	p0=8;
+	q0=8;
+    G0=[  0   4   8  12  16  20  24  28;
+		  32  36  40  44  48  52  56  60;
+		  64  68  72  76  80  84  88  92;
+		  96 100 104 108 112 116 120 124;
+		 128 132 136 140 144 148 152 156;
+		 160 164 168 172 176 180 184 188; 
+		 192 196 200 204 208 212 216 220;
+		 224 228 232 236 240 244 248 252]/255; 
+
+	XG0=zeros(p0,q0,L0);
+	for l=1:L0
+		XG0[:,:,l]=dwt(G0, wavelet(WT.haar), l);
+	end
+
+	XG0approx=zeros(p0,q0,L0);	
+	for l=1:L0
+	    XG0approx[1:Int(p0/2^l),1:Int(q0/2^l),l]=XG0[1:Int(p0/2^l),1:Int(q0/2^l),l];
+	end
+	XG0detail=XG0-XG0approx;
+
+    YG0approx=zeros(p0,q0,L0);
+	YG0detail=zeros(p0,q0,L0);
+	for l=1:L0
+		YG0approx[:,:,l]=idwt(XG0approx[:,:,l], wavelet(WT.haar), l);
+		YG0detail[:,:,l]=idwt(XG0detail[:,:,l], wavelet(WT.haar), l);
 	end
 	
-    p=plot(Gray.(z),
-         title="Original Grayscale Image", 
-		 size=(600,400), 
-		 xlim=(1,914),
-		 ylim=(1,657),
-         xticks = ([1 h/2  h],[-floor(h/2),0,floor(h/2)]),
-         xlabel="x",
-         yticks = ([1 w/2  w],[floor(w/2),0,-floor(w/2)]),
-         ylabel="y");
-	  segment!(P,Q,color=:lightgreen,width=2,legend=false);
-	  segment!(R,S,color=:magenta,width=4,legend=false);
+    ZG0approx=zeros(p0,q0,L0+1);
+	ZG0detail=zeros(p0,q0,L0+1);
+	ZG0approx[:,:,1]=G0;
+	for l=2:L0+1
+        ZG0approx[:,:,l]=YG0approx[:,:,l-1];
+	    ZG0detail[:,:,l]=YG0detail[:,:,l-1];
+	end
+		
+end
 
-	for i=1:1
+# ╔═╡ b9212600-820b-4edc-a265-ddf8334700c9
+md""" 
+##### 4-2. $8\times8$ 白黒画像
+
+"""
+
+# ╔═╡ b0b82a93-e29c-4c68-a2a7-45f181658f19
+md"""
+Level = $(@bind l0 Slider(0:L0, show_value=true))
+"""
+
+# ╔═╡ 3c393bc2-7da4-431b-a984-e8db6a97f5dc
+begin
+Z1=plot(Gray.(G0),
+        #title="Original Image",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+Z2=plot(Gray.(ZG0approx[:,:,l0+1]),
+        #title="Haar",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+Z3=plot(Gray.(ZG0detail[:,:,l0+1]),
+        #title="Daubechies 2",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+plot(Z1,Z2,Z3,layout=(1,3))
+end
+
+# ╔═╡ fe147b2f-fdc8-4f6e-8efa-fb04862aa2dd
+begin
+
+# Decomposition Filter 
+	RXII=zeros(2^L1,2^L1,L1);
+	GXII=zeros(2^L1,2^L1,L1);
+	BXII=zeros(2^L1,2^L1,L1);
+	for l=1:L1
+		RXII[:,:,l]=dwt(RII, wavelet(WT.haar), l);
+		GXII[:,:,l]=dwt(GII, wavelet(WT.haar), l);
+		BXII[:,:,l]=dwt(BII, wavelet(WT.haar), l);
+	end
+
+# Splitting 
+	RXIIapprox=zeros(2^L1,2^L1,L1);
+	GXIIapprox=zeros(2^L1,2^L1,L1);
+	BXIIapprox=zeros(2^L1,2^L1,L1);
+	for l=1:L1
+	    RXIIapprox[1:2^(L1-l),1:2^(L1-l),l]=RXII[1:2^(L1-l),1:2^(L1-l),l];
+		GXIIapprox[1:2^(L1-l),1:2^(L1-l),l]=GXII[1:2^(L1-l),1:2^(L1-l),l];
+		BXIIapprox[1:2^(L1-l),1:2^(L1-l),l]=BXII[1:2^(L1-l),1:2^(L1-l),l];
+	end
+	RXIIdetail=RXII-RXIIapprox;
+	GXIIdetail=GXII-GXIIapprox;
+	BXIIdetail=BXII-BXIIapprox;
+
+# Composition Filter
+	RYIIapprox=zeros(2^L1,2^L1,L1);
+	RYIIdetail=zeros(2^L1,2^L1,L1);
+	GYIIapprox=zeros(2^L1,2^L1,L1);
+	GYIIdetail=zeros(2^L1,2^L1,L1);
+	BYIIapprox=zeros(2^L1,2^L1,L1);
+	BYIIdetail=zeros(2^L1,2^L1,L1);
+	for l=1:L1
+		RYIIapprox[:,:,l]=idwt(RXIIapprox[:,:,l], wavelet(WT.haar), l);
+		RYIIdetail[:,:,l]=idwt(RXIIdetail[:,:,l], wavelet(WT.haar), l);
+		GYIIapprox[:,:,l]=idwt(GXIIapprox[:,:,l], wavelet(WT.haar), l);
+		GYIIdetail[:,:,l]=idwt(GXIIdetail[:,:,l], wavelet(WT.haar), l);
+		BYIIapprox[:,:,l]=idwt(BXIIapprox[:,:,l], wavelet(WT.haar), l);
+		BYIIdetail[:,:,l]=idwt(BXIIdetail[:,:,l], wavelet(WT.haar), l);
+	end
+
+# RGB
+	ZIIapprox=zeros(3,2^L1,2^L1,L1+1);
+	ZIIdetail=zeros(3,2^L1,2^L1,L1+1);
+	ZIIapprox[1,:,:,1]=RII;
+	ZIIapprox[2,:,:,1]=GII;
+	ZIIapprox[3,:,:,1]=BII;
+	for l=2:L1+1
+		ZIIapprox[1,:,:,l]=RYIIapprox[:,:,l-1];
+		ZIIapprox[2,:,:,l]=GYIIapprox[:,:,l-1];
+		ZIIapprox[3,:,:,l]=BYIIapprox[:,:,l-1];
+		ZIIdetail[1,:,:,l]=RYIIdetail[:,:,l-1];
+		ZIIdetail[2,:,:,l]=GYIIdetail[:,:,l-1];
+		ZIIdetail[3,:,:,l]=BYIIdetail[:,:,l-1];
+	end
+
+end
+
+# ╔═╡ 4d12cd8c-7d1d-4611-887f-bfdd53da48e9
+md""" 
+##### 4-3. 乱数で生成した $16\times16$ RGB画像
+
+"""
+
+# ╔═╡ 7aeb1dd0-19d3-4ab5-9767-b52f1d0d6fe7
+md"""
+Level = $(@bind l1 Slider(0:L1, show_value=true))
+"""
+
+# ╔═╡ 4a79dcb1-a2a8-4cb7-863c-9ca9e8f88e66
+begin
+Q0=plot(colorview(RGB,ZIIapprox[:,:,:,1]),
+        #title="Original Image",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+Q1=plot(colorview(RGB,ZIIapprox[:,:,:,l1+1]),
+        #title="Approximation",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false);
+Q2=plot(colorview(RGB,ZIIdetail[:,:,:,l1+1]),
+        #title="Detail",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+plot(Q0,Q1,Q2,layout=(1,3))
+end
+
+# ╔═╡ 2b8cafe5-0efb-4892-957c-055c63bf23ed
+begin
+
+# Decomposition Filter 
+	XR=zeros(p,q,L);
+	XG=zeros(p,q,L);
+	XB=zeros(p,q,L);
+	for l=1:L
+		XR[:,:,l]=dwt(R, wavelet(WT.haar), l);
+		XG[:,:,l]=dwt(G, wavelet(WT.haar), l);
+		XB[:,:,l]=dwt(B, wavelet(WT.haar), l);
+	end
+
+# Splitting 
+	XRapprox=zeros(p,q,L);
+	XGapprox=zeros(p,q,L);
+	XBapprox=zeros(p,q,L);	
+	for l=1:L
+	XRapprox[1:Int(p/2^l),1:Int(q/2^l),l]=XR[1:Int(p/2^l),1:Int(q/2^l),l];
+    XGapprox[1:Int(p/2^l),1:Int(q/2^l),l]=XG[1:Int(p/2^l),1:Int(q/2^l),l];
+	XBapprox[1:Int(p/2^l),1:Int(q/2^l),l]=XB[1:Int(p/2^l),1:Int(q/2^l),l];
+	end
+	XRdetail=XR-XRapprox;
+	XGdetail=XG-XGapprox;
+	XBdetail=XB-XBapprox;
+
+# Composition Filter
+	YRapprox=zeros(p,q,L);
+	YGapprox=zeros(p,q,L);
+	YBapprox=zeros(p,q,L);
+	YRdetail=zeros(p,q,L);
+	YGdetail=zeros(p,q,L);
+	YBdetail=zeros(p,q,L);
+	for l=1:L
+		YRapprox[:,:,l]=idwt(XRapprox[:,:,l], wavelet(WT.haar), l);
+		YGapprox[:,:,l]=idwt(XGapprox[:,:,l], wavelet(WT.haar), l);
+		YBapprox[:,:,l]=idwt(XBapprox[:,:,l], wavelet(WT.haar), l);
+		YRdetail[:,:,l]=idwt(XRdetail[:,:,l], wavelet(WT.haar), l);
+		YGdetail[:,:,l]=idwt(XGdetail[:,:,l], wavelet(WT.haar), l);
+		YBdetail[:,:,l]=idwt(XBdetail[:,:,l], wavelet(WT.haar), l);
+	end
+
+# RGB
+	Wapprox=zeros(3,p,q,L+1);
+	Wdetail=zeros(3,p,q,L+1);
+	Wapprox[:,:,:,1]=A;
+	for l=2:L+1
+		Wapprox[1,:,:,l]=YRapprox[:,:,l-1];
+		Wapprox[2,:,:,l]=YGapprox[:,:,l-1];
+		Wapprox[3,:,:,l]=YBapprox[:,:,l-1];
+		Wdetail[1,:,:,l]=YRdetail[:,:,l-1];
+		Wdetail[2,:,:,l]=YGdetail[:,:,l-1];
+		Wdetail[3,:,:,l]=YBdetail[:,:,l-1];
 	end
 end
 
-# ╔═╡ 7769d576-c24f-4bd3-b130-e55faa113e55
+# ╔═╡ 6468175c-7a79-4ab8-8879-eb442694c06d
+md""" 
+##### 4-4. $384\times512$ RGB画像
+シンガポール国立大学の理学部食堂の焼きそば char kway teow
+
+ $384=2^7\times3$, $512=2^9$
+
+"""
+
+# ╔═╡ 33e36dbc-6682-4de6-a911-7eb2a0ec4f05
+md"""
+Level = $(@bind l Slider(0:L, show_value=true))
+"""
+
+# ╔═╡ a9f38308-8483-4b3a-9160-f2622027c7e2
 begin
-	A=zeros(1);
-	B=zeros(1);
-	A[1]=a1+1;
-	B[1]=b1+563;
-	q=plot(sinogram, 
-         size=(600,400), 
-         title="Sinogram (X-ray transform)", 
-         st=:heatmap, 
-         color=:jet1, 
-         xaxis="θ [radian]", 
-		 xticks = ([1 90 180], [0,"π/2","π"]),
-         yaxis="t",
-	     yticks = ([1 Nr/2 Nr], [-floor(Nr/2),0,floor(Nr/2)]));
-	scatter!(A,B,markersize = 10,label = false, color=:magenta);
+P1=plot(colorview(RGB,A[:,:,:]),
+        #title="Approximation",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+P2=plot(colorview(RGB,Wapprox[:,:,:,l+1]),
+        #title="Approximation",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+P3=plot(colorview(RGB,Wdetail[:,:,:,l+1]),
+        #title="Detail",
+        xaxis=false, 
+        xticks=false, 
+        yaxis=false, 
+        yticks=false, 
+        grid=false);
+plot(P1,P2,P3,size=(1536,384),layout=(1,3))
+end
 
+# ╔═╡ 03b68271-a720-4daf-82c3-f4f34bdf5484
+md""" 
+##### 4-5. メキシコ帽子のウェーブレット変換と特異台の検出
 
-	for i=1:1
+"""
+
+# ╔═╡ 50563683-fff6-474d-a80e-c970da920d3f
+md"""
+ $1/h$ = $(@bind λ1 Slider(100:100:5000, show_value=true, default=2000)) 
+"""
+
+# ╔═╡ 73a95878-34cc-41fc-a711-2bcd77e7d378
+begin
+    # f(x,y)
+    AA=zeros(300,300);
+	for k=51:250
+        AA[k,150-Int64(floor(sqrt(100^2-(k-150)^2))):150+Int64(floor(sqrt(100^2-(k-150)^2)))].=1;
+	end
+    AAA=AA[26:275,26:275];
+
+    # FBI transform of f
+    FFF0=zeros(250,250);
+    FFF1=zeros(250,250);
+    FFF2=zeros(250,250);
+	FFF3=zeros(250,250);
+    FFF4=zeros(250,250);
+
+    for j=1:250
+        for k=1:250
+            for q=-25:25
+                for p=-25:25
+                    E3=exp(-λ1*(-p/50)^2/2);
+                    E4=exp(-λ1*(q/50)^2/2);
+                    FFF0[j,k]=FFF0[j,k]+p*q*AA[j+25+p,k+25+q]*E3*E4;
+                    FFF1[j,k]=FFF1[j,k]+p*AA[j+25+p,k+25+q]*E3*E4;
+                    FFF2[j,k]=FFF2[j,k]+q*AA[j+25+p,k+25+q]*E3*E4;
+					FFF3[j,k]=FFF1[j,k]+(p+q)*AA[j+25+p,k+25+q]*E3*E4;
+                    FFF4[j,k]=FFF2[j,k]+(p-q)*AA[j+25+p,k+25+q]*E3*E4;
+                end
+            end
+        end
+    end
+	
+end
+
+# ╔═╡ 21fbbfd5-a15d-4ed1-9ea0-19d495327f0f
+begin
+    MF0=abs.(FFF0);
+    M0=maximum(MF0);
+    MF1=abs.(FFF1);
+    M1=maximum(MF1);
+    MF2=abs.(FFF2);
+    M2=maximum(MF2);
+	MF3=abs.(FFF3);
+    M3=maximum(MF3);
+	MF4=abs.(FFF4);
+    M4=maximum(MF4);
+
+	Z10=zeros(2,1);
+    Z11=zeros(2,1);
+    Z12=zeros(2,1);
+	Z13=zeros(2,1);
+    Z14=zeros(2,1);
+
+    for j=1:250
+        for k=1:250
+            if (MF0[j,k]>65*M0/100)
+               Z10=[Z10 [j;k]];
+            end
+        end
+    end
+
+    for j=1:250
+        for k=1:250
+            if (MF1[j,k]>90*M1/100)
+               Z11=[Z11 [j;k]];
+            end
+        end
+    end
+
+    for j=1:250
+        for k=1:250
+            if (MF2[j,k]>90*M2/100)
+               Z12=[Z12 [j;k]];
+            end
+        end
+    end
+
+    for j=1:250
+        for k=1:250
+            if (MF3[j,k]>90*M3/100)
+               Z13=[Z13 [j;k]];
+            end
+        end
+    end
+
+    for j=1:250
+        for k=1:250
+            if (MF4[j,k]>90*M4/100)
+               Z14=[Z14 [j;k]];
+            end
+        end
+    end
+	(L00,LL0)=size(Z10);
+    ZZZ0=Int64.(Z10[:,2:LL0]);
+    (L11,LL1)=size(Z11);
+    ZZZ1=Int64.(Z11[:,2:LL1]);
+    (L22,LL2)=size(Z12);
+    ZZZ2=Int64.(Z12[:,2:LL2]);
+	(L33,LL3)=size(Z13);
+    ZZZ3=Int64.(Z13[:,2:LL3]);
+	(L44,LL4)=size(Z14);
+    ZZZ4=Int64.(Z14[:,2:LL4]);
+
+	ZZZ=[ZZZ0 ZZZ1 ZZZ2 ZZZ3 ZZZ4];
+	
+	for j=1:1
+		a=j
 	end
 end
 
-# ╔═╡ edc9bd70-2c59-4140-b992-28c53f4c6137
+# ╔═╡ 4edacb7f-659b-4b5d-af44-0a451e3815a2
 begin
-	plot(p, q,
-         layout=2, 
-         size=(1600,500), 
-         left_margin=Plots.Measures.Length(:mm, 5.0),
-         right_margin=Plots.Measures.Length(:mm, 15.0),
-         top_margin=Plots.Measures.Length(:mm, 5.0),
-         bottom_margin=Plots.Measures.Length(:mm, 5.0))
+
+	p1=plot(Gray.(AA),
+    title="Original Grayscale Image", 
+    #    right_margin=Plots.Measures.Length(:mm, 10.0),
+    size=(400,500), 
+    xticks = ([21 floor(89/2)  69;], [-1,0,1]),
+	xaxis=false,
+    xlabel="\$x\$",
+    yticks = ([21 floor(89/2)  69;], [1,0,-1]),
+	yaxis=false,
+    ylabel="\$y\$")
+    savefig("./gray_disk_1.png") 
+ 
+    p2=scatter(ZZZ[1,:], ZZZ[2,:], 
+               title="The singular support of a disk \n detected by the FBI transform", 
+		       xlim=(-10,260),
+		       ylim=(-10,260),
+		       grid=false,
+		       aspect_ratio=1.0,
+               color="magenta",
+               size=(400,400),
+               xaxis="\$x\$",
+               xticks = ([26 126 225;], [-1,0,1]),
+               yaxis="\$y\$", 
+		       yticks = ([26 126 225;], [-1,0,1]),
+               legend = :false)
+               savefig("./ss_disk.png")    
+
+    plot(p1, p2, 
+     layout=2, 
+     size=(1000,500), 
+     left_margin=Plots.Measures.Length(:mm, 5.0),
+     right_margin=Plots.Measures.Length(:mm, 15.0),
+     top_margin=Plots.Measures.Length(:mm, 5.0),
+     bottom_margin=Plots.Measures.Length(:mm, 5.0))
+     #savefig("./fbi_square.png") 
+
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Formatting = "59287772-0a20-5a39-b81b-1366585eb4c0"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
+ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
 ImageView = "86fae568-95e7-573e-a6b2-d8a6b900c9ef"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LowRankApprox = "898213cb-b102-5a47-900c-97e73b919f73"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
 TestImages = "5e47fb64-e119-507b-a336-dd2b206d9990"
+Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
+
+[compat]
+Colors = "~0.12.10"
+DSP = "~0.7.9"
+DataFrames = "~1.6.1"
+Formatting = "~0.4.2"
+ImageFiltering = "~0.7.8"
+ImageMagick = "~1.3.0"
+ImageTransformations = "~0.10.1"
+ImageView = "~0.12.1"
+Images = "~0.26.0"
+LaTeXStrings = "~1.3.1"
+LowRankApprox = "~0.5.5"
+Plots = "~1.40.0"
+PlutoUI = "~0.7.55"
+Primes = "~0.5.6"
+TestImages = "~1.8.0"
+Wavelets = "~0.10.0"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.5"
+julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "56c0e65c465fe8e5ee8d12c1fd167f7d9333e579"
-
-[[deps.ADTypes]]
-git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
-uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "0.2.6"
+project_hash = "e7a3735e3f7ab5d904662ad4b055b1324ae4d436"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -228,16 +1355,11 @@ git-tree-sha1 = "c278dfab760520b8bb7e9511b968bf4ba38b7acc"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
 version = "1.2.3"
 
-[[deps.AbstractTrees]]
-git-tree-sha1 = "faa260e4cb5aba097a73fab382dd4b5819d8ec8c"
-uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-version = "0.4.4"
-
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
-git-tree-sha1 = "f8c724a2066b2d37d0234fe4022ec67987022d00"
+git-tree-sha1 = "0fb305e0253fd4e833d486914367a2ee2c2e78d0"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "4.0.0"
+version = "4.0.1"
 weakdeps = ["StaticArrays"]
 
     [deps.Adapt.extensions]
@@ -293,11 +1415,6 @@ version = "0.4.7"
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
-[[deps.Bijections]]
-git-tree-sha1 = "c9b163bd832e023571e86d0b90d9de92a9879088"
-uuid = "e2ed5e7c-b2de-5872-ae92-c73ca462fb04"
-version = "0.1.6"
-
 [[deps.BitFlags]]
 git-tree-sha1 = "2dc09997850d68179b69dafb58ae806167a32b1b"
 uuid = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
@@ -338,12 +1455,6 @@ git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.16.1+1"
 
-[[deps.Calculus]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
-uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
-version = "0.5.1"
-
 [[deps.CatIndices]]
 deps = ["CustomUnitRanges", "OffsetArrays"]
 git-tree-sha1 = "a0f80a09780eed9b1d106a1bf62041c2efc995bc"
@@ -352,9 +1463,9 @@ version = "0.2.2"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra"]
-git-tree-sha1 = "c1deebd76f7a443d527fc0430d5758b8b2112ed8"
+git-tree-sha1 = "1287e3872d646eed95198457873249bd9f0caed2"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.19.1"
+version = "1.20.1"
 weakdeps = ["SparseArrays"]
 
     [deps.ChainRulesCore.extensions]
@@ -368,15 +1479,15 @@ version = "0.1.12"
 
 [[deps.Clustering]]
 deps = ["Distances", "LinearAlgebra", "NearestNeighbors", "Printf", "Random", "SparseArrays", "Statistics", "StatsBase"]
-git-tree-sha1 = "407f38961ac11a6e14b2df7095a2577f7cb7cb1b"
+git-tree-sha1 = "9ebb045901e9bbf58767a9f34ff89831ed711aae"
 uuid = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
-version = "0.15.6"
+version = "0.15.7"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
-git-tree-sha1 = "cd67fc487743b2f0fd4380d4cbd3a24660d0eec8"
+git-tree-sha1 = "59939d8a997469ee05c4b4944560a820f9ba0d73"
 uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
-version = "0.7.3"
+version = "0.7.4"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
@@ -406,22 +1517,6 @@ git-tree-sha1 = "fc08e5930ee9a4e03f84bfb5211cb54e7769758a"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.10"
 
-[[deps.Combinatorics]]
-git-tree-sha1 = "08c8b6831dc00bfea825826be0bc8336fc369860"
-uuid = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
-version = "1.0.2"
-
-[[deps.CommonSolve]]
-git-tree-sha1 = "0eee5eb66b1cf62cd6ad1b460238e60e4b09400c"
-uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
-version = "0.2.4"
-
-[[deps.CommonSubexpressions]]
-deps = ["MacroTools", "Test"]
-git-tree-sha1 = "7b8a93dba8af7e3b42fecabf646260105ac373f7"
-uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
-version = "0.3.0"
-
 [[deps.Compat]]
 deps = ["TOML", "UUIDs"]
 git-tree-sha1 = "75bd5b6fc5089df449b5d35fa501c846c9b6549b"
@@ -437,11 +1532,6 @@ deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.1.1+0"
 
-[[deps.CompositeTypes]]
-git-tree-sha1 = "02d2316b7ffceff992f3096ae48c7829a8aa0638"
-uuid = "b152e2b5-7a66-4b01-a709-34e65c35f657"
-version = "0.1.3"
-
 [[deps.ComputationalResources]]
 git-tree-sha1 = "52cb3ec90e8a8bea0e62e275ba577ad0f74821f7"
 uuid = "ed09eef8-17a6-5b46-8889-db040fac31e3"
@@ -452,17 +1542,6 @@ deps = ["Serialization", "Sockets"]
 git-tree-sha1 = "8cfa272e8bdedfa88b6aefbbca7c19f1befac519"
 uuid = "f0e56b4a-5159-44fe-b623-3e5288b988bb"
 version = "2.3.0"
-
-[[deps.ConstructionBase]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "c53fc348ca4d40d7b371e71fd52251839080cbc9"
-uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-version = "1.5.4"
-weakdeps = ["IntervalSets", "StaticArrays"]
-
-    [deps.ConstructionBase.extensions]
-    ConstructionBaseIntervalSetsExt = "IntervalSets"
-    ConstructionBaseStaticArraysExt = "StaticArrays"
 
 [[deps.Contour]]
 git-tree-sha1 = "d05d9e7b7aedff4e5b51a029dced05cfb6125781"
@@ -481,15 +1560,32 @@ git-tree-sha1 = "fcbb72b032692610bfbdb15018ac16a36cf2e406"
 uuid = "adafc99b-e345-5852-983c-f28acb93d879"
 version = "0.3.1"
 
+[[deps.Crayons]]
+git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.1.1"
+
 [[deps.CustomUnitRanges]]
 git-tree-sha1 = "1a3f97f907e6dd8983b744d2642651bb162a3f7a"
 uuid = "dc8bdbbb-1ca9-579f-8c36-e416f6a65cce"
 version = "1.0.2"
 
+[[deps.DSP]]
+deps = ["Compat", "FFTW", "IterTools", "LinearAlgebra", "Polynomials", "Random", "Reexport", "SpecialFunctions", "Statistics"]
+git-tree-sha1 = "f7f4319567fe769debfcf7f8c03d8da1dd4e2fb0"
+uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+version = "0.7.9"
+
 [[deps.DataAPI]]
-git-tree-sha1 = "8da84edb865b0b5b0100c0666a9bc9a0b71c553c"
+git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.15.0"
+version = "1.16.0"
+
+[[deps.DataFrames]]
+deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "REPL", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "04c738083f29f86e62c8afc341f0967d8717bdb8"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.6.1"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -512,18 +1608,6 @@ git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 version = "1.9.1"
 
-[[deps.DiffResults]]
-deps = ["StaticArraysCore"]
-git-tree-sha1 = "782dd5f4561f5d267313f23853baaaa4c52ea621"
-uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
-version = "1.1.0"
-
-[[deps.DiffRules]]
-deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialFunctions"]
-git-tree-sha1 = "23163d55f885173722d1e4cf0f6110cdbaf7e272"
-uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
-version = "1.15.1"
-
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
 git-tree-sha1 = "66c4c81f259586e8f002eacebc177e1fb06363b0"
@@ -539,55 +1623,16 @@ weakdeps = ["ChainRulesCore", "SparseArrays"]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
-[[deps.Distributions]]
-deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "7c302d7a5fec5214eb8a5a4c466dcf7a51fcf169"
-uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.107"
-
-    [deps.Distributions.extensions]
-    DistributionsChainRulesCoreExt = "ChainRulesCore"
-    DistributionsDensityInterfaceExt = "DensityInterface"
-    DistributionsTestExt = "Test"
-
-    [deps.Distributions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    DensityInterface = "b429d917-457f-4dbc-8f4c-0cc954292b1d"
-    Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
 git-tree-sha1 = "2fb1e02f2b635d0845df5d7c167fec4dd739b00d"
 uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.9.3"
 
-[[deps.DomainSets]]
-deps = ["CompositeTypes", "IntervalSets", "LinearAlgebra", "Random", "StaticArrays", "Statistics"]
-git-tree-sha1 = "51b4b84d33ec5e0955b55ff4b748b99ce2c3faa9"
-uuid = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
-version = "0.6.7"
-
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
-
-[[deps.DualNumbers]]
-deps = ["Calculus", "NaNMath", "SpecialFunctions"]
-git-tree-sha1 = "5837a837389fccf076445fce071c8ddaea35a566"
-uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
-version = "0.6.8"
-
-[[deps.DynamicPolynomials]]
-deps = ["Future", "LinearAlgebra", "MultivariatePolynomials", "MutableArithmetics", "Pkg", "Reexport", "Test"]
-git-tree-sha1 = "fea68c84ba262b121754539e6ea0546146515d4f"
-uuid = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
-version = "0.5.3"
-
-[[deps.EnumX]]
-git-tree-sha1 = "bdb1942cd4c45e3c678fd11569d5cccd80976237"
-uuid = "4e289a0a-7415-4d19-859d-a7e5c4648b56"
-version = "1.0.4"
 
 [[deps.EpollShim_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -606,11 +1651,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "4558ab818dcceaab612d1bb8c19cee87eda2b83c"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
 version = "2.5.0+0"
-
-[[deps.ExprTools]]
-git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
-uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
-version = "0.1.10"
 
 [[deps.FFMPEG]]
 deps = ["FFMPEG_jll"]
@@ -632,9 +1672,9 @@ version = "0.3.2"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
-git-tree-sha1 = "ec22cbbcd01cba8f41eecd7d44aac1f23ee985e3"
+git-tree-sha1 = "4820348781ae578893311153d69049a93d05f39d"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.7.2"
+version = "1.8.0"
 
 [[deps.FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -650,18 +1690,6 @@ version = "1.16.2"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
-
-[[deps.FillArrays]]
-deps = ["LinearAlgebra", "Random"]
-git-tree-sha1 = "5b93957f6dcd33fc343044af3d48c215be2562f1"
-uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "1.9.3"
-weakdeps = ["PDMats", "SparseArrays", "Statistics"]
-
-    [deps.FillArrays.extensions]
-    FillArraysPDMatsExt = "PDMats"
-    FillArraysSparseArraysExt = "SparseArrays"
-    FillArraysStatisticsExt = "Statistics"
 
 [[deps.FixedPointNumbers]]
 deps = ["Statistics"]
@@ -681,16 +1709,6 @@ git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
 uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
 version = "0.4.2"
 
-[[deps.ForwardDiff]]
-deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
-git-tree-sha1 = "cf0fe81336da9fb90944683b8c41984b08793dad"
-uuid = "f6369f11-7733-5829-9624-2563aa707210"
-version = "0.10.36"
-weakdeps = ["StaticArrays"]
-
-    [deps.ForwardDiff.extensions]
-    ForwardDiffStaticArraysExt = "StaticArrays"
-
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
 git-tree-sha1 = "d8db6a5a2fe1381c1ea4ef2cab7c69c2de7f9ea0"
@@ -703,17 +1721,6 @@ git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
 version = "1.0.10+0"
 
-[[deps.FunctionWrappers]]
-git-tree-sha1 = "d62485945ce5ae9c0c48f124a84998d755bae00e"
-uuid = "069b7b12-0de2-55c6-9aab-29f3d0a68a2e"
-version = "1.1.3"
-
-[[deps.FunctionWrappersWrappers]]
-deps = ["FunctionWrappers"]
-git-tree-sha1 = "b104d487b34566608f8b4e1c39fb0b10aa279ff8"
-uuid = "77dc65aa-8811-40c2-897b-53d922fa7daf"
-version = "0.1.3"
-
 [[deps.Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
@@ -723,12 +1730,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jl
 git-tree-sha1 = "ff38ba61beff76b8f4acad8ab0c97ef73bb670cb"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
 version = "3.3.9+0"
-
-[[deps.GPUArraysCore]]
-deps = ["Adapt"]
-git-tree-sha1 = "ec632f177c0d990e64d955ccc1b8c04c485a0950"
-uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
-version = "0.1.6"
 
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "UUIDs", "p7zip_jll"]
@@ -791,9 +1792,9 @@ version = "1.0.2"
 
 [[deps.Gtk4]]
 deps = ["BitFlags", "CEnum", "Cairo", "Cairo_jll", "ColorTypes", "GTK4_jll", "Glib_jll", "Graphene_jll", "Graphics", "JLLWrappers", "Libdl", "Librsvg_jll", "Pango_jll", "Preferences", "Reexport", "Scratch", "Xorg_xkeyboard_config_jll", "adwaita_icon_theme_jll", "gdk_pixbuf_jll", "hicolor_icon_theme_jll"]
-git-tree-sha1 = "2297be5b530b81053e235d78a7e25ae3f7c55454"
+git-tree-sha1 = "62dd852143217375e929fb5aec15c2d967fb8eb5"
 uuid = "9db2cae5-386f-4011-9d63-a5602296539b"
-version = "0.6.0"
+version = "0.6.1"
 
 [[deps.GtkObservables]]
 deps = ["Cairo", "Colors", "Dates", "FixedPointNumbers", "Graphics", "Gtk4", "IntervalSets", "LinearAlgebra", "Observables", "PrecompileTools", "Reexport", "RoundingIntegers"]
@@ -824,12 +1825,6 @@ deps = ["BitTwiddlingConvenienceFunctions", "IfElse", "Libdl", "Static"]
 git-tree-sha1 = "eb8fed28f4994600e29beef49744639d985a04b2"
 uuid = "3e5b6fbb-0976-4d2c-9146-d79de83f2fb0"
 version = "0.1.16"
-
-[[deps.HypergeometricFunctions]]
-deps = ["DualNumbers", "LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
-git-tree-sha1 = "f218fe3736ddf977e0e772bc9a586b2383da2685"
-uuid = "34004b35-14d8-5ef3-9330-4cdb6864b03a"
-version = "0.3.23"
 
 [[deps.Hyperscript]]
 deps = ["Test"]
@@ -879,10 +1874,10 @@ uuid = "f332f351-ec65-5f6a-b3d1-319c6670881a"
 version = "0.3.12"
 
 [[deps.ImageCore]]
-deps = ["AbstractFFTs", "ColorVectorSpace", "Colors", "FixedPointNumbers", "MappedArrays", "MosaicViews", "OffsetArrays", "PaddedViews", "PrecompileTools", "Reexport"]
-git-tree-sha1 = "fc5d1d3443a124fde6e92d0260cd9e064eba69f8"
+deps = ["ColorVectorSpace", "Colors", "FixedPointNumbers", "MappedArrays", "MosaicViews", "OffsetArrays", "PaddedViews", "PrecompileTools", "Reexport"]
+git-tree-sha1 = "b2a7eaa169c13f5bcae8131a83bc30eff8f71be0"
 uuid = "a09fc81d-aa75-5fe9-8630-4744c3626534"
-version = "0.10.1"
+version = "0.10.2"
 
 [[deps.ImageCorners]]
 deps = ["ImageCore", "ImageFiltering", "PrecompileTools", "StaticArrays", "StatsBase"]
@@ -984,6 +1979,17 @@ git-tree-sha1 = "ea8031dea4aff6bd41f1df8f2fdfb25b33626381"
 uuid = "d25df0c9-e2be-5dd7-82c8-3ad0b3e990b9"
 version = "0.1.4"
 
+[[deps.InlineStrings]]
+deps = ["Parsers"]
+git-tree-sha1 = "9cc2baf75c6d09f9da536ddf58eb2f29dedaf461"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.4.0"
+
+[[deps.IntegerMathUtils]]
+git-tree-sha1 = "b8ffb903da9f7b8cf695a8bead8e01814aa24b30"
+uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
+version = "0.1.2"
+
 [[deps.IntegralArrays]]
 deps = ["ColorTypes", "FixedPointNumbers", "IntervalSets"]
 git-tree-sha1 = "be8e690c3973443bec584db3346ddc904d4884eb"
@@ -1020,6 +2026,11 @@ weakdeps = ["Statistics"]
     [deps.IntervalSets.extensions]
     IntervalSetsStatisticsExt = "Statistics"
 
+[[deps.InvertedIndices]]
+git-tree-sha1 = "0dc7b50b8d436461be01300fd8cd45aa0274b038"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.3.0"
+
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
@@ -1037,9 +2048,9 @@ version = "1.0.0"
 
 [[deps.JLD2]]
 deps = ["FileIO", "MacroTools", "Mmap", "OrderedCollections", "Pkg", "PrecompileTools", "Printf", "Reexport", "Requires", "TranscodingStreams", "UUIDs"]
-git-tree-sha1 = "315b508ec5df53936532097ffe6e5deacbf41861"
+git-tree-sha1 = "7c0008f0b7622c6c0ee5c65cbc667b69f8a65672"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.44"
+version = "0.4.45"
 
 [[deps.JLFzf]]
 deps = ["Pipe", "REPL", "Random", "fzf_jll"]
@@ -1100,17 +2111,6 @@ git-tree-sha1 = "50901ebc375ed41dbf8058da26f9de442febbbec"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.3.1"
 
-[[deps.LabelledArrays]]
-deps = ["ArrayInterface", "ChainRulesCore", "ForwardDiff", "LinearAlgebra", "MacroTools", "PreallocationTools", "RecursiveArrayTools", "StaticArrays"]
-git-tree-sha1 = "f12f2225c999886b69273f84713d1b9cb66faace"
-uuid = "2ee39098-c373-598a-b85f-a56591580800"
-version = "1.15.0"
-
-[[deps.LambertW]]
-git-tree-sha1 = "c5ffc834de5d61d00d2b0e18c96267cffc21f648"
-uuid = "984bce1d-4616-540c-a9ee-88d1112d94c9"
-version = "0.4.6"
-
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Printf", "Requires"]
 git-tree-sha1 = "f428ae552340899a935973270b8d98e5a31c49fe"
@@ -1130,12 +2130,6 @@ deps = ["ArrayInterface", "LinearAlgebra", "ManualMemory", "SIMDTypes", "Static"
 git-tree-sha1 = "62edfee3211981241b57ff1cedf4d74d79519277"
 uuid = "10f19ff3-798f-405d-979b-55457f8fc047"
 version = "0.1.15"
-
-[[deps.Lazy]]
-deps = ["MacroTools"]
-git-tree-sha1 = "1370f8202dac30758f3c345f9909b97f53d87d3f"
-uuid = "50d2b5c4-7a5e-59d5-8109-a42b560f39c0"
-version = "0.15.1"
 
 [[deps.LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
@@ -1267,11 +2261,33 @@ deps = ["ArrayInterface", "CPUSummary", "CloseOpenIntervals", "DocStringExtensio
 git-tree-sha1 = "0f5648fbae0d015e3abe5867bca2b362f67a5894"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
 version = "0.12.166"
-weakdeps = ["ChainRulesCore", "ForwardDiff", "SpecialFunctions"]
 
     [deps.LoopVectorization.extensions]
     ForwardDiffExt = ["ChainRulesCore", "ForwardDiff"]
     SpecialFunctionsExt = "SpecialFunctions"
+
+    [deps.LoopVectorization.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+    SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+
+[[deps.LowRankApprox]]
+deps = ["FFTW", "LinearAlgebra", "LowRankMatrices", "Nullables", "Random", "SparseArrays"]
+git-tree-sha1 = "031af63ba945e23424815014ba0e59c28f5aed32"
+uuid = "898213cb-b102-5a47-900c-97e73b919f73"
+version = "0.5.5"
+
+[[deps.LowRankMatrices]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "44c5a4f2669a78c7947de06985da1eadacd1b085"
+uuid = "e65ccdef-c354-471a-8090-89bec1c20ec3"
+version = "1.0.0"
+
+    [deps.LowRankMatrices.extensions]
+    LowRankMatricesFillArraysExt = "FillArrays"
+
+    [deps.LowRankMatrices.weakdeps]
+    FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
@@ -1351,18 +2367,6 @@ git-tree-sha1 = "d29b08ad606124069ca263f9439c00c23f531ea6"
 uuid = "d4071afc-4203-49ee-90bc-13ebeb18d604"
 version = "0.1.3"
 
-[[deps.MultivariatePolynomials]]
-deps = ["ChainRulesCore", "DataStructures", "LinearAlgebra", "MutableArithmetics"]
-git-tree-sha1 = "769c9175942d91ed9b83fa929eee4fe6a1d128ad"
-uuid = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
-version = "0.5.4"
-
-[[deps.MutableArithmetics]]
-deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "806eea990fb41f9b36f1253e5697aa645bf6a9f8"
-uuid = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
-version = "1.4.0"
-
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
 git-tree-sha1 = "0877504529a3e5c3343c6f8b4c0381e57e4387e4"
@@ -1384,6 +2388,11 @@ version = "1.1.1"
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
+
+[[deps.Nullables]]
+git-tree-sha1 = "8f87854cc8f3685a60689d8edecaa29d2251979b"
+uuid = "4d1e1d77-625e-5b40-9113-a560ec7a8ecd"
+version = "1.0.0"
 
 [[deps.Observables]]
 git-tree-sha1 = "7438a59546cf62428fc9d1bc94729146d37a7225"
@@ -1461,12 +2470,6 @@ deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
 version = "10.42.0+1"
 
-[[deps.PDMats]]
-deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "949347156c25054de2db3b166c52ac4728cbad65"
-uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.11.31"
-
 [[deps.PNGFiles]]
 deps = ["Base64", "CEnum", "ImageCore", "IndirectArrays", "OffsetArrays", "libpng_jll"]
 git-tree-sha1 = "67186a2bc9a90f9f85ff3cc8277868961fb57cbd"
@@ -1532,10 +2535,10 @@ uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 version = "1.4.0"
 
 [[deps.Plots]]
-deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Preferences", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "ccee59c6e48e6f2edf8a5b64dc817b6729f99eb5"
+deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
+git-tree-sha1 = "38a748946dca52a622e79eea6ed35c6737499109"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.39.0"
+version = "1.40.0"
 
     [deps.Plots.extensions]
     FileIOExt = "FileIO"
@@ -1579,17 +2582,11 @@ version = "3.2.13"
     MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
     MutableArithmetics = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
 
-[[deps.PreallocationTools]]
-deps = ["Adapt", "ArrayInterface", "ForwardDiff"]
-git-tree-sha1 = "64bb68f76f789f5fe5930a80af310f19cdafeaed"
-uuid = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
-version = "0.4.17"
-
-    [deps.PreallocationTools.extensions]
-    PreallocationToolsReverseDiffExt = "ReverseDiff"
-
-    [deps.PreallocationTools.weakdeps]
-    ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.3"
 
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
@@ -1602,6 +2599,18 @@ deps = ["TOML"]
 git-tree-sha1 = "00805cd429dcb4870060ff49ef443486c262e38e"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.1"
+
+[[deps.PrettyTables]]
+deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
+git-tree-sha1 = "88b895d13d53b5577fd53379d913b9ab9ac82660"
+uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+version = "2.3.1"
+
+[[deps.Primes]]
+deps = ["IntegerMathUtils"]
+git-tree-sha1 = "cb420f77dc474d23ee47ca8d14c90810cafe69e7"
+uuid = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
+version = "0.5.6"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -1624,12 +2633,6 @@ deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll
 git-tree-sha1 = "0c03844e2231e12fda4d0086fd7cbe4098ee8dc5"
 uuid = "ea2cea3b-5b76-57ae-a6ef-0a8af62496e1"
 version = "5.15.3+2"
-
-[[deps.QuadGK]]
-deps = ["DataStructures", "LinearAlgebra"]
-git-tree-sha1 = "9b23c31e76e333e6fb4c1595ae6afa74966a729e"
-uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
-version = "2.9.4"
 
 [[deps.Quaternions]]
 deps = ["LinearAlgebra", "Random", "RealDot"]
@@ -1678,26 +2681,6 @@ git-tree-sha1 = "45cf9fd0ca5839d06ef333c8201714e888486342"
 uuid = "01d81517-befc-4cb6-b9ec-a95719d0359c"
 version = "0.6.12"
 
-[[deps.RecursiveArrayTools]]
-deps = ["Adapt", "ArrayInterface", "DocStringExtensions", "GPUArraysCore", "IteratorInterfaceExtensions", "LinearAlgebra", "RecipesBase", "SparseArrays", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables"]
-git-tree-sha1 = "dd7fc1923fde0cc6cdff451352d17924b0704ca1"
-uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "3.5.4"
-
-    [deps.RecursiveArrayTools.extensions]
-    RecursiveArrayToolsFastBroadcastExt = "FastBroadcast"
-    RecursiveArrayToolsMeasurementsExt = "Measurements"
-    RecursiveArrayToolsMonteCarloMeasurementsExt = "MonteCarloMeasurements"
-    RecursiveArrayToolsTrackerExt = "Tracker"
-    RecursiveArrayToolsZygoteExt = "Zygote"
-
-    [deps.RecursiveArrayTools.weakdeps]
-    FastBroadcast = "7034ab61-46d4-4ed7-9d0f-46aef9175898"
-    Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
-    MonteCarloMeasurements = "0987c9cc-fe09-11e8-30f0-b96dd679fdca"
-    Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
-    Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
-
 [[deps.Reexport]]
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -1721,18 +2704,6 @@ git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.0"
 
-[[deps.Rmath]]
-deps = ["Random", "Rmath_jll"]
-git-tree-sha1 = "f65dcb5fa46aee0cf9ed6274ccbd597adc49aa7b"
-uuid = "79098fc4-a85e-5d69-aa6a-4863f24498fa"
-version = "0.7.1"
-
-[[deps.Rmath_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "6ed52fdd3382cf21947b15e8870ac0ddbff736da"
-uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
-version = "0.4.0+0"
-
 [[deps.Rotations]]
 deps = ["LinearAlgebra", "Quaternions", "Random", "StaticArrays"]
 git-tree-sha1 = "792d8fd4ad770b6d517a13ebb8dadfcac79405b8"
@@ -1743,12 +2714,6 @@ version = "1.6.1"
 git-tree-sha1 = "99acd97f396ea71a5be06ba6de5c9defe188a778"
 uuid = "d5f540fe-1c90-5db3-b776-2e2f362d9394"
 version = "1.1.0"
-
-[[deps.RuntimeGeneratedFunctions]]
-deps = ["ExprTools", "SHA", "Serialization"]
-git-tree-sha1 = "6aacc5eefe8415f47b3e34214c1d79d2674a0ba2"
-uuid = "7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
-version = "0.5.12"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -1765,49 +2730,20 @@ git-tree-sha1 = "3aac6d68c5e57449f5b9b865c9ba50ac2970c4cf"
 uuid = "476501e8-09a2-5ece-8869-fb82de89a1fa"
 version = "0.6.42"
 
-[[deps.SciMLBase]]
-deps = ["ADTypes", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FillArrays", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables", "TruncatedStacktraces"]
-git-tree-sha1 = "ad711463cb386572f33f6209464d8dca5a081247"
-uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "2.19.0"
-
-    [deps.SciMLBase.extensions]
-    SciMLBaseChainRulesCoreExt = "ChainRulesCore"
-    SciMLBasePartialFunctionsExt = "PartialFunctions"
-    SciMLBasePyCallExt = "PyCall"
-    SciMLBasePythonCallExt = "PythonCall"
-    SciMLBaseRCallExt = "RCall"
-    SciMLBaseZygoteExt = "Zygote"
-
-    [deps.SciMLBase.weakdeps]
-    ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    PartialFunctions = "570af359-4316-4cb7-8c74-252c00c2016b"
-    PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
-    PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
-    RCall = "6f49c342-dc21-5d91-9882-a32aef131414"
-    Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
-
-[[deps.SciMLOperators]]
-deps = ["ArrayInterface", "DocStringExtensions", "Lazy", "LinearAlgebra", "Setfield", "SparseArrays", "StaticArraysCore", "Tricks"]
-git-tree-sha1 = "51ae235ff058a64815e0a2c34b1db7578a06813d"
-uuid = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
-version = "0.3.7"
-
 [[deps.Scratch]]
 deps = ["Dates"]
 git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
+[[deps.SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "0e7508ff27ba32f26cd459474ca2ede1bc10991f"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.4.1"
+
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
-
-[[deps.Setfield]]
-deps = ["ConstructionBase", "Future", "MacroTools", "StaticArraysCore"]
-git-tree-sha1 = "e2cc6d8c88613c05e1defb55170bf5ff211fbeac"
-uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
-version = "1.1.1"
 
 [[deps.SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
@@ -1891,9 +2827,9 @@ weakdeps = ["OffsetArrays", "StaticArrays"]
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "f68dd04d131d9a8a8eb836173ee8f105c360b0c5"
+git-tree-sha1 = "7b0e9c14c624e435076d19aea1e5cbdec2b9ca37"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.9.1"
+version = "1.9.2"
 weakdeps = ["ChainRulesCore", "Statistics"]
 
     [deps.StaticArrays.extensions]
@@ -1922,25 +2858,17 @@ git-tree-sha1 = "1d77abd07f617c4868c33d4f5b9e1dbb2643c9cf"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.2"
 
-[[deps.StatsFuns]]
-deps = ["HypergeometricFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "f625d686d5a88bcd2b15cd81f18f98186fdc0c9a"
-uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "1.3.0"
-
-    [deps.StatsFuns.extensions]
-    StatsFunsChainRulesCoreExt = "ChainRulesCore"
-    StatsFunsInverseFunctionsExt = "InverseFunctions"
-
-    [deps.StatsFuns.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
-
 [[deps.StringDistances]]
 deps = ["Distances", "StatsAPI"]
 git-tree-sha1 = "ceeef74797d961aee825aabf71446d6aba898acb"
 uuid = "88034a9c-02f8-509d-84a9-84ec65e18404"
 version = "0.11.2"
+
+[[deps.StringManipulation]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "a04cabe79c5f01f4d723cc6704070ada0b9d46d5"
+uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
+version = "0.3.4"
 
 [[deps.SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
@@ -1950,34 +2878,6 @@ uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
 version = "7.2.1+1"
-
-[[deps.SymbolicIndexingInterface]]
-git-tree-sha1 = "74502f408d99fc217a9d7cd901d9ffe45af892b1"
-uuid = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
-version = "0.3.3"
-
-[[deps.SymbolicUtils]]
-deps = ["AbstractTrees", "Bijections", "ChainRulesCore", "Combinatorics", "ConstructionBase", "DataStructures", "DocStringExtensions", "DynamicPolynomials", "IfElse", "LabelledArrays", "LinearAlgebra", "MultivariatePolynomials", "NaNMath", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArrays", "SymbolicIndexingInterface", "TimerOutputs", "Unityper"]
-git-tree-sha1 = "849b1dfb1680a9e9f2c6023f79a49b694fb6d0da"
-uuid = "d1185830-fcd6-423d-90d6-eec64667417b"
-version = "1.5.0"
-
-[[deps.Symbolics]]
-deps = ["ArrayInterface", "Bijections", "ConstructionBase", "DataStructures", "DiffRules", "Distributions", "DocStringExtensions", "DomainSets", "DynamicPolynomials", "IfElse", "LaTeXStrings", "LambertW", "Latexify", "Libdl", "LinearAlgebra", "LogExpFunctions", "MacroTools", "Markdown", "NaNMath", "PrecompileTools", "RecipesBase", "Reexport", "Requires", "RuntimeGeneratedFunctions", "SciMLBase", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArrays", "SymbolicIndexingInterface", "SymbolicUtils"]
-git-tree-sha1 = "8960d2f32a99e52bb323de7c6c564f04427cfe63"
-uuid = "0c5d862f-8b57-4792-8d23-62f2024744c7"
-version = "5.16.0"
-
-    [deps.Symbolics.extensions]
-    SymbolicsGroebnerExt = "Groebner"
-    SymbolicsPreallocationToolsExt = ["ForwardDiff", "PreallocationTools"]
-    SymbolicsSymPyExt = "SymPy"
-
-    [deps.Symbolics.weakdeps]
-    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-    Groebner = "0b43b601-686d-58a3-8a1c-6623616c7cd4"
-    PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
-    SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -2035,12 +2935,6 @@ git-tree-sha1 = "1176cc31e867217b06928e2f140c90bd1bc88283"
 uuid = "06e1c1a7-607b-532d-9fad-de7d9aa2abac"
 version = "0.5.0"
 
-[[deps.TimerOutputs]]
-deps = ["ExprTools", "Printf"]
-git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
-uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.5.23"
-
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "1fbeaaca45801b4ba17c251dd8603ef24801dd84"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
@@ -2054,12 +2948,6 @@ weakdeps = ["Random", "Test"]
 git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
 uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
 version = "0.1.8"
-
-[[deps.TruncatedStacktraces]]
-deps = ["InteractiveUtils", "MacroTools", "Preferences"]
-git-tree-sha1 = "ea3e54c2bdde39062abf5a9758a23735558705e1"
-uuid = "781d530d-4396-4725-bb49-402e4bee1e77"
-version = "1.4.0"
 
 [[deps.URIs]]
 git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
@@ -2104,12 +2992,6 @@ git-tree-sha1 = "e2d817cc500e960fdbafcf988ac8436ba3208bfd"
 uuid = "45397f5d-5981-4c77-b2b3-fc36d6e9b728"
 version = "1.6.3"
 
-[[deps.Unityper]]
-deps = ["ConstructionBase"]
-git-tree-sha1 = "25008b734a03736c41e2a7dc314ecb95bd6bbdb0"
-uuid = "a7c27f48-0311-42f6-a7f8-2c11e75eb415"
-version = "0.1.6"
-
 [[deps.Unzip]]
 git-tree-sha1 = "ca0969166a028236229f63514992fc073799bb78"
 uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
@@ -2120,6 +3002,12 @@ deps = ["ArrayInterface", "CPUSummary", "HostCPUFeatures", "IfElse", "LayoutPoin
 git-tree-sha1 = "7209df901e6ed7489fe9b7aa3e46fb788e15db85"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.21.65"
+
+[[deps.Wavelets]]
+deps = ["DSP", "FFTW", "LinearAlgebra", "Reexport", "SpecialFunctions", "Statistics"]
+git-tree-sha1 = "f514f9b16f6a15552c6aad7b03afc7b9a8478ef4"
+uuid = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
+version = "0.10.0"
 
 [[deps.Wayland_jll]]
 deps = ["Artifacts", "EpollShim_jll", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
@@ -2339,7 +3227,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.11.0+0"
+version = "5.8.0+1"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2395,14 +3283,59 @@ version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╟─5ffc5ec0-f91f-11ec-0552-37ef5f25102d
-# ╟─2dc43448-3cf4-475f-8b61-d16c3594d9e3
-# ╟─a2a26295-531b-424d-9fd7-b3974987623b
-# ╟─76cb2ec2-fc76-4ad5-8d57-777395755f7f
-# ╟─092ba07e-4866-40c6-ade8-25d9c2218011
-# ╟─edc9bd70-2c59-4140-b992-28c53f4c6137
-# ╟─8ed1312b-f5a3-4220-a865-9a12ed09a691
-# ╟─7769d576-c24f-4bd3-b130-e55faa113e55
-# ╟─ab1c3d69-0499-4fad-b2a8-5360ed7339e1
+# ╟─bf5554d5-5c14-48bb-8dda-bf264cf660a9
+# ╟─4fc5029e-1e90-408d-b5c6-c563918ae660
+# ╟─e8b6f53b-eb6a-4f9b-99e5-8ee87f2ceda2
+# ╟─9aa96b35-d37d-46c2-90c9-509d06126fd5
+# ╟─b4bcd9fb-1960-445d-bde1-5755fd5662e8
+# ╟─642ba2ee-ba66-4601-9edb-677c23e70780
+# ╟─b8264135-0b84-4395-8d3a-ad8f42265004
+# ╟─beeb450c-2191-4591-a289-d0d956e83e98
+# ╟─df792cbc-3244-453d-9cb8-6bc359b881c5
+# ╟─8e88d7de-5b94-46dc-bb37-b2a89287372e
+# ╟─734f2151-1622-466c-8f64-0b86d81b32f2
+# ╟─2cc48257-83e1-4fa4-8659-edc962d92bf2
+# ╟─9ff98a24-2646-4009-9482-9d066faa1716
+# ╟─56cc741b-f300-4558-a078-a161f58307a9
+# ╟─dc3cb19c-c076-4dc4-9d38-90a5c4956f3b
+# ╟─c8263139-b11e-4404-a311-e5a345944168
+# ╟─e5700f04-1645-4fa7-9fa9-b2cc608120b7
+# ╟─d412da3b-992f-450f-8c4f-989f033697e8
+# ╟─9ff00640-ee11-4d18-9fbd-3d6ef5264ee5
+# ╟─aa109280-a4ef-427a-8b75-850acd667d12
+# ╟─34c4dc39-0b65-4abd-9997-c8bfaf02b529
+# ╟─23591d92-e9d9-4565-94d0-6d3b37c8befc
+# ╟─a7744957-4472-4012-ad31-372cd48fa78c
+# ╟─8d8b6675-a71f-421b-bc62-c0a6fb9b3e9e
+# ╟─2e5e3122-1b2b-4dcf-88d4-f79b3e727bbf
+# ╟─b4937ad5-c8c7-492c-86d6-981a14f274ca
+# ╟─3f45852f-ad72-4ba2-b147-a14151e8ed97
+# ╟─52b8e90f-41d2-4791-9042-799053d5ec38
+# ╟─3d656643-bf04-4ac7-99fc-6d98a571523a
+# ╟─789e78db-4f6a-4f7a-bba0-8ab119d3f1fb
+# ╟─6e01a823-9696-41b7-96a3-cc1157bd472d
+# ╟─6f41a7c7-6c0a-447f-a9ff-6ef79d8c21b0
+# ╟─bf7a523b-3783-4e45-a201-cbffaaf4859a
+# ╟─780baf1a-b008-44dc-be56-75d0b5cf621e
+# ╟─17c01101-a17c-43f6-9a08-260f13e17c13
+# ╟─c53a862a-0a1d-479e-a84e-f32d7bd7cfc8
+# ╟─6b1ce739-aca6-47d6-842a-701712b2cc61
+# ╟─de96f98e-7217-496f-9bf0-6c3e13706ec0
+# ╟─b9212600-820b-4edc-a265-ddf8334700c9
+# ╟─b0b82a93-e29c-4c68-a2a7-45f181658f19
+# ╟─3c393bc2-7da4-431b-a984-e8db6a97f5dc
+# ╟─fe147b2f-fdc8-4f6e-8efa-fb04862aa2dd
+# ╟─4d12cd8c-7d1d-4611-887f-bfdd53da48e9
+# ╟─7aeb1dd0-19d3-4ab5-9767-b52f1d0d6fe7
+# ╟─4a79dcb1-a2a8-4cb7-863c-9ca9e8f88e66
+# ╟─2b8cafe5-0efb-4892-957c-055c63bf23ed
+# ╟─6468175c-7a79-4ab8-8879-eb442694c06d
+# ╟─33e36dbc-6682-4de6-a911-7eb2a0ec4f05
+# ╟─a9f38308-8483-4b3a-9160-f2622027c7e2
+# ╟─73a95878-34cc-41fc-a711-2bcd77e7d378
+# ╟─21fbbfd5-a15d-4ed1-9ea0-19d495327f0f
+# ╟─03b68271-a720-4daf-82c3-f4f34bdf5484
+# ╟─50563683-fff6-474d-a80e-c970da920d3f
+# ╟─4edacb7f-659b-4b5d-af44-0a451e3815a2
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

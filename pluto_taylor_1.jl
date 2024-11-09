@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.27
+# v0.19.43
 
 using Markdown
 using InteractiveUtils
@@ -19,6 +19,7 @@ begin
 	using PlutoUI 
 	using Plots
 	using Colors
+	using LaTeXStrings
 
 	# Small patch to make images look more crisp:
 	# https://github.com/JuliaImages/ImageShow.jl/pull/50
@@ -93,7 +94,7 @@ $\log(1+x)=\sum_{n=1}^\infty\frac{(-1)^{n-1}x^n}{n}, \quad x\in(-1,1].$
 
 For any $\varepsilon\in(0,1)$, 
 
-$\max_{x\in[-1+\varepsilon,1]}\left\lvert\log(1+x)-\sum_{n=1}^N\frac{(-1)^{n-1}x^n}{n}\right\rvert \rightarrow 0 \quad (N\rightarrow\infty).$
+$\max_{x\in[-1+\varepsilon,1-\varepsilon]}\left\lvert\log(1+x)-\sum_{n=1}^N\frac{(-1)^{n-1}x^n}{n}\right\rvert \rightarrow 0 \quad (N\rightarrow\infty).$
 
 
 """
@@ -102,7 +103,7 @@ $\max_{x\in[-1+\varepsilon,1]}\left\lvert\log(1+x)-\sum_{n=1}^N\frac{(-1)^{n-1}x
 begin
 	x = range(-1, 1.2, length = 221);
 	f1=log.(ones(221)+x);
-	N=30;
+	N=50;
 	# each term
     s1=zeros(N,221);
 	for n=1:N
@@ -130,8 +131,8 @@ begin
 	h1=S1[l1,:];
     plot([f1,h1],grid=false,linewidth=2,ylim=(-4,2),
          title="log(1+x) and its Taylor Series",
-         xticks = ([0 101 201;], [-1 0 1]),xlabel="x",
-         label=["log(1+x)" "Taylor Polynomial"],
+         xticks = ([0 100 201;], [-1,0,1]),xlabel=L"x",
+         label=[L"log(1+x)" "Taylor Polynomial"],
 	     legend=:topleft,legendfont=font(12))
 end
 
@@ -142,7 +143,7 @@ $(1+x)^{-1/2}=\sum_{n=0}^\infty\frac{(-1)^n(2n)!x^n}{2^{2n}(n!)^2}, \quad x\in(-
 
 For any $\varepsilon\in(0,1)$, 
 
-$\max_{x\in[-1+\varepsilon,1]}
+$\max_{x\in[-1+\varepsilon,1-\varepsilon]}
 \left\lvert
 (1+x)^{-1/2}
 -
@@ -180,8 +181,8 @@ begin
 	h2=S2[l2+1,:];
     plot([f2,h2],grid=false,linewidth=2,ylim=(0,4),
 		title="(1+x)^(-1/2) and its Taylor Series",
-		xticks = ([0 101 201;], [-1 0 1]),xlabel="x",
-		label=["(1+x)^(-1/2)" "Taylor Polynomial"],legend=:top,legendfont=font(12))
+		xticks = ([0 101 201;], [-1,0,1]),xlabel=L"x",
+		label=[L"(1+x)^{-1/2}" "Taylor Polynomial"],legend=:top,legendfont=font(12))
 end
 
 # ╔═╡ 596f1b0f-7a83-4f48-9316-17ef15d88cbe
@@ -240,8 +241,11 @@ begin
 	h3=S3[l3,:];
     plot([f3,h3],grid=false,linewidth=2,ylim=(-1.2,1.2),
 		title="sin(x) and its Taylor Series",
-		xticks = ([0 50 100 151 201 251 301;], ["-3π" "-2π" "-π" "0" "π" "2π" "3π"]),xlabel="x",
-		label=["sin(x)" "Taylor"],legend=:topleft,legendfont=font(8))end
+		xticks = ([0 50 100 151 201 251 301;], ["-3π","-2π","-π","0","π","2π","3π"]),
+		xlabel=L"x",
+		label=[L"sin(x)" "Taylor"],
+		legend=:topleft,legendfont=font(8))
+end
 
 # ╔═╡ a8563bdb-5391-4288-aca7-a279657f7ca0
 md"""
@@ -289,7 +293,7 @@ n = $(@bind k1 Slider(1:N１, show_value=true))
 
 # ╔═╡ 67e28e2e-b27e-473c-a333-43c27e61df2e
 begin
-	plot([a[1:k1] b[1:k1]],xlim=[1,N１],ylim=[2.62,2.74],seriestype=:scatter, legend=:bottomright, label=["a(n)" "b(n)"],title="Approximation of e")
+	plot([a[1:k1] b[1:k1]],xlim=[1,N１],ylim=[2.62,2.74],seriestype=:scatter, legend=:bottomright, label=[L"a(n)" L"b(n)"],title="Approximation of e")
 end
 
 # ╔═╡ 235d5b25-f044-476c-ad2f-39d1fffbd9c2
@@ -350,7 +354,7 @@ n = $(@bind k2 Slider(1:N2, show_value=true))
 
 # ╔═╡ 3e22df11-977b-436b-bf6c-f05f849202f0
 begin
-	plot([c[1:k2] d[1:k2]],xlim=[1,N2],ylim=[3,3.3],seriestype=:scatter, legend=:bottomright, label=["c(n)" "d(n)"], title="Approximation of π")
+	plot([c[1:k2] d[1:k2]],xlim=[1,N2],ylim=[3,3.3],seriestype=:scatter, legend=:bottomright, label=[L"c(n)" L"d(n)"], title="Approximation of π")
 	#savefig("./4arctan1.png")
 end
 
@@ -358,11 +362,13 @@ end
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 Colors = "~0.12.10"
+LaTeXStrings = "~1.3.1"
 Plots = "~1.38.16"
 PlutoUI = "~0.7.51"
 """
@@ -371,9 +377,9 @@ PlutoUI = "~0.7.51"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "f4993a178da6f189ebeafca4e45d8e0e0e6d67ce"
+project_hash = "13c457021bac90e2070b2577dbe6a221f79f23b8"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -451,7 +457,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+0"
+version = "1.1.1+0"
 
 [[deps.ConcurrentUtilities]]
 deps = ["Serialization", "Sockets"]
@@ -509,6 +515,12 @@ version = "0.9.3"
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
+
+[[deps.EpollShim_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "8e9441ee83492030ace98f9789a654a6d0b1f643"
+uuid = "2702e6a9-849d-5ed8-8c21-79e8b8f9ee43"
+version = "0.0.20230411+0"
 
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -690,9 +702,9 @@ uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
 version = "2.10.1+0"
 
 [[deps.LaTeXStrings]]
-git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
+git-tree-sha1 = "50901ebc375ed41dbf8058da26f9de442febbbec"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-version = "1.3.0"
+version = "1.3.1"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Printf", "Requires"]
@@ -711,21 +723,26 @@ version = "0.16.1"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.3"
+version = "0.6.4"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "7.84.0+0"
+version = "8.4.0+0"
 
 [[deps.LibGit2]]
-deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[deps.LibGit2_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
+uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
+version = "1.6.4+0"
 
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
+version = "1.11.0+1"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -831,7 +848,7 @@ version = "1.1.7"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+0"
+version = "2.28.2+1"
 
 [[deps.Measures]]
 git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
@@ -849,7 +866,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.10.11"
+version = "2023.1.10"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
@@ -870,12 +887,12 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+4"
+version = "0.3.23+4"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+0"
+version = "0.8.1+2"
 
 [[deps.OpenSSL]]
 deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
@@ -909,7 +926,7 @@ version = "1.6.0"
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.42.0+0"
+version = "10.42.0+1"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
@@ -931,7 +948,7 @@ version = "0.42.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.9.2"
+version = "1.10.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
@@ -998,7 +1015,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Random]]
-deps = ["SHA", "Serialization"]
+deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RecipesBase]]
@@ -1066,6 +1083,7 @@ version = "1.1.0"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.10.0"
 
 [[deps.SpecialFunctions]]
 deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
@@ -1082,7 +1100,7 @@ version = "2.2.0"
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.9.0"
+version = "1.10.0"
 
 [[deps.StatsAPI]]
 deps = ["LinearAlgebra"]
@@ -1097,9 +1115,9 @@ uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 version = "0.34.0"
 
 [[deps.SuiteSparse_jll]]
-deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
+deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "5.10.1+6"
+version = "7.2.1+1"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1174,7 +1192,7 @@ uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
 version = "0.2.0"
 
 [[deps.Wayland_jll]]
-deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
+deps = ["Artifacts", "EpollShim_jll", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
 git-tree-sha1 = "ed8d92d9774b077c53e1da50fd81a36af3744c1c"
 uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.21.0+0"
@@ -1326,7 +1344,7 @@ version = "1.4.0+3"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+0"
+version = "1.2.13+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1355,7 +1373,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+0"
+version = "5.8.0+1"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1378,12 +1396,12 @@ version = "1.3.7+1"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.48.0+0"
+version = "1.52.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+0"
+version = "17.4.0+2"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1409,7 +1427,7 @@ version = "1.4.1+0"
 # ╟─c299148e-4b85-4bf3-a514-20d1dff0dc59
 # ╟─6f6479b6-265a-4474-8a90-3df0ff98cfac
 # ╟─fd9270b6-bcb1-444a-b2e8-bc07efee3a24
-# ╠═3edf319a-48e4-48f0-82ab-f81e5f2c581c
+# ╟─3edf319a-48e4-48f0-82ab-f81e5f2c581c
 # ╟─a1aa2ce7-db42-44d2-a9d8-4ae67976f76f
 # ╟─cceffb37-cb1f-4436-aab6-17f325504276
 # ╟─897a6954-9e77-41d8-a88d-d43b4c9902c6

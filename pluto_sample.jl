@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.42
 
 using Markdown
 using InteractiveUtils
@@ -52,9 +52,6 @@ md"""
 ### Original Grayscale Image
 """
 
-# ╔═╡ 8e7bcd23-b6c7-49f7-a9a7-d324f228d592
-I=load("char_kway_teow.jpg")
-
 # ╔═╡ 6e74f71f-eeee-45ea-9bfe-1642a593eff8
 md"""
 ### Sampling and Reverse
@@ -62,66 +59,6 @@ md"""
 
 # ╔═╡ b7379e69-26bd-48a5-b3bb-ab885ee38380
 step = @bind s Slider(1:40, show_value=true, default=40)
-
-# ╔═╡ 469d7a59-b027-4d7a-9a24-f219135bfa5e
-begin
-    I=load("char_kway_teow.jpg");
-    X=imresize(I, ratio=1/4);
-    (p,q)=size(X);
-    A=channelview(X);
-    R=Array{Float64}(A[1,:,:]);
-	G=Array{Float64}(A[2,:,:]);
-	B=Array{Float64}(A[3,:,:]);
-
-	RU, RS, RV=psvd(R);
-	GU, GS, GV=psvd(G);
-	BU, BS, BV=psvd(B);
-	
-	rank=100;
-	DR=zeros(p,q,rank);
-	DG=zeros(p,q,rank);
-	DB=zeros(p,q,rank);
-    for r=1:rank
-	    DR[:,:,r]=sum(RS[n]*RU[1:p,n]*(RV[1:q,n])' for n=1:r);
-        DG[:,:,r]=sum(GS[n]*GU[1:p,n]*(GV[1:q,n])' for n=1:r);
-        DB[:,:,r]=sum(BS[n]*BU[1:p,n]*(BV[1:q,n])' for n=1:r);
-	end
-
-    Y=zeros(3,p,q,rank+16);
-	Z=zeros(p,q)
-	for r=1:4
-	    Y[1,:,:,r]=R;
-        Y[2,:,:,r]=G;
-        Y[3,:,:,r]=B;
-	end
-    for r=5:8
-	    Y[1,:,:,r]=Z;
-        Y[2,:,:,r]=Z;
-        Y[3,:,:,r]=Z;
-    end
-	for r=9:rank+8
-        Y[1,:,:,r]=DR[:,:,r-8];
-        Y[2,:,:,r]=DG[:,:,r-8];
-        Y[3,:,:,r]=DB[:,:,r-8];
-	end
-    for r=rank+9:rank+12
-        Y[1,:,:,r]=Z;
-        Y[2,:,:,r]=Z;
-        Y[3,:,:,r]=Z;
-	end
-    for r=rank+13:rank+16
-        Y[1,:,:,r]=R;
-        Y[2,:,:,r]=G;
-        Y[3,:,:,r]=B;
-	end
-
-    W=zeros(3,p,q,rank);
-    for r=1:rank
-	    W[1,:,:,r]=DR[:,:,r];
-        W[2,:,:,r]=DG[:,:,r];
-        W[3,:,:,r]=DB[:,:,r];
-	end
-end
 
 # ╔═╡ 19830f72-b34f-4d56-9e66-8177aed19e4e
 [I[1:s:end, 1:s:end] I[1:s:end, end:-s:1];
@@ -248,6 +185,69 @@ Q2=plot(colorview(RGB,Wdetail[:,:,:,l+1]),
         grid=false);
 plot(Q1,Q2)
 end
+
+# ╔═╡ 469d7a59-b027-4d7a-9a24-f219135bfa5e
+begin
+    I=load("char_kway_teow.jpg");
+    X=imresize(I, ratio=1/4);
+    (p,q)=size(X);
+    A=channelview(X);
+    R=Array{Float64}(A[1,:,:]);
+	G=Array{Float64}(A[2,:,:]);
+	B=Array{Float64}(A[3,:,:]);
+
+	RU, RS, RV=psvd(R);
+	GU, GS, GV=psvd(G);
+	BU, BS, BV=psvd(B);
+	
+	rank=100;
+	DR=zeros(p,q,rank);
+	DG=zeros(p,q,rank);
+	DB=zeros(p,q,rank);
+    for r=1:rank
+	    DR[:,:,r]=sum(RS[n]*RU[1:p,n]*(RV[1:q,n])' for n=1:r);
+        DG[:,:,r]=sum(GS[n]*GU[1:p,n]*(GV[1:q,n])' for n=1:r);
+        DB[:,:,r]=sum(BS[n]*BU[1:p,n]*(BV[1:q,n])' for n=1:r);
+	end
+
+    Y=zeros(3,p,q,rank+16);
+	Z=zeros(p,q)
+	for r=1:4
+	    Y[1,:,:,r]=R;
+        Y[2,:,:,r]=G;
+        Y[3,:,:,r]=B;
+	end
+    for r=5:8
+	    Y[1,:,:,r]=Z;
+        Y[2,:,:,r]=Z;
+        Y[3,:,:,r]=Z;
+    end
+	for r=9:rank+8
+        Y[1,:,:,r]=DR[:,:,r-8];
+        Y[2,:,:,r]=DG[:,:,r-8];
+        Y[3,:,:,r]=DB[:,:,r-8];
+	end
+    for r=rank+9:rank+12
+        Y[1,:,:,r]=Z;
+        Y[2,:,:,r]=Z;
+        Y[3,:,:,r]=Z;
+	end
+    for r=rank+13:rank+16
+        Y[1,:,:,r]=R;
+        Y[2,:,:,r]=G;
+        Y[3,:,:,r]=B;
+	end
+
+    W=zeros(3,p,q,rank);
+    for r=1:rank
+	    W[1,:,:,r]=DR[:,:,r];
+        W[2,:,:,r]=DG[:,:,r];
+        W[3,:,:,r]=DB[:,:,r];
+	end
+end
+
+# ╔═╡ 8e7bcd23-b6c7-49f7-a9a7-d324f228d592
+I=load("char_kway_teow.jpg")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
